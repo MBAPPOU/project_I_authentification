@@ -1,6 +1,5 @@
-require 'sinatra'
-require 'rack/test'
 $:.unshift File.dirname(__FILE__)
+require 'rack/test'
 require 's_auth'
 
 include Rack::Test::Methods
@@ -13,6 +12,11 @@ describe 'Authentification server' do
         end
 
 
+        it "should print Hello if path is  '/' !" do
+           get '/'
+           last_response.body.should be "\nHello !\n\n<input id=\"message\" name=\"message\" size=\"100\" type=\"hidden\" value=\"Hello\" />\n"
+        end
+        
         context "when registring an application" do
            it "should return a secret to the application's administrator " do
            end
