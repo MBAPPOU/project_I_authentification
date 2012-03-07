@@ -7,7 +7,7 @@
 
 <h1> <%= accueil %> </h1>
 
-<form action="/application/authenticate" method="post">
+<form action="<%= post %>" method="post">
   <div class="field">
     <label for="session_login">Login</label><br />
     <input id="session_login" name="login" size="30" type="text" />
@@ -24,7 +24,7 @@
   </div>
   
   <div class="actions">
-    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="<%= lien %>" />
+    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="<%= backup_url %>" />
     <input name="commit" type="submit" value="Record application" />
   </div>
   
