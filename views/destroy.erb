@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Destruction page</title>
+</head>
+<body>
+
+<h1> <%= accueil %> </h1>
+
+<form action="<%= post %>" method="post">
+  <div class="field">
+    <label for="<%= thing %>"><%= thing %></label><br />
+    <input id="<%= thing %>" name="<%= thing %>" size="50" type="text" />
+  </div>
+  
+  <div class="actions">
+    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="<%= backup_url %>" />
+    <input name="commit" type="submit" value="Destroy" />
+  </div>
+  
+  
+  
+</form>
+
+</body>
+</html>
+

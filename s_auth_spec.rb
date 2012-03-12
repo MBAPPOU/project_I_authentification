@@ -11,80 +11,106 @@ describe 'Authentification server' do
         def app
            Sinatra::Application
         end
-
-        #context "when asking for registring" do
-           #it "should return a formular" do
-              #get '/s_auth/user/register'
-              #last_response.status.should == 200
-           #end
-        #end
+        
         before(:each) do
               User.all.each{|p| p.destroy}
               Appli.all.each{|p| p.destroy}
         end
 
-
-        context "when registring somebody" do
-           it "should return 200 if no problem " do
-              post '/register' , params = {"login"=>"ok1", "password"=>"ok1","message"=>"createaccount"}              
+        context "to register somebody" do
+           it "should return a formular" do
+              get '/s_auth/user/register'
+              last_response.should be_ok
               last_response.status.should == 200
+              last_response.body.should_not be nil
            end
-        
-           it "should return Registring succeed if no problem " do
-              post '/register' , params = {"login"=>"ok", "password"=>"ok","message"=>"createaccount"}
-              last_response.body.should == "Registring succeed"
-           end
-                                 
-           it "should redirect you on register page if problem " do
-              post '/register' , params = {"login"=>"ok", "password"=>"ok","message"=>""}
+           
+           it "should create an account if everything goes on" do
+              post '/register' , params = {"login"=>"ok1", "password"=>"1ko","message"=>"createaccount"}              
               last_response.status.should == 302
            end
            
-           it "should return Registring failed if problem " do
+           it "should return a message if an account with the same arguments exists in database" do
               u = User.new
-              u.login = "ok"
-              u.password = "ok"
+              u.login = "ok1"
+              u.password = "1ko"
               u.save
-              post '/register' , params = {"login"=>"ok", "password"=>"ok","message"=>"createaccount"}
-              last_response.body.should == "An account with these arguments already exists"
+              post '/register' , params = {"login"=>"ok1", "password"=>"1ko","message"=>"createaccount"}              
+              last_response.status.should == 404
+              last_response.body.should  == "An account with these arguments already exists"
            end
            
-        end
-        
-        
-        context "when authenticate somebody" do
-           it "should return auth succeed if no problem" do
-              u = User.new
-              u.login = "ok"
-              u.password = "ok"
-              u.save
-              post '/login', params = {"login"=>"ok", "password"=>"ok","message"=>""}
-              last_response.body.should == "Authentification succeed"
-           end
-           
-           it "should redirect you on login page if problem" do
-              post '/login', params = {"login"=>"ok", "password"=>"lfd","message"=>""}
-              last_response.status.should == 302
+           it "should return again a formular when no password or login put in the first formular" do
+              post '/register' , params = {"login"=>"ok1","message"=>"createaccount"}              
+              last_response.status.should == 404
+              last_response.body.should_not be nil
            end
         end
         
-        
-        context "when registring an application" do
-          # it "should return a secret to the application's administrator " do
-              #get '/s_auth/application/register'
-              #last_response.status.should == 200
-           #end
+        context "to authenticate somebody" do
+           it "should return a formular" do
+              get '/s_auth/user/login'
+              last_response.should be_ok
+              last_response.status.should == 200
+              last_response.body.should_not be nil
+           end
            
-           it "should return saving succeed if no problem " do
+           it "should return a message if you have been logged earlier" do
+              get '/s_auth/user/login' , rack_env={"HTTP_COOKIE" => "12=auth12"}
+              last_response.should be_ok
+              last_request.cookies.should_not be nil
+              last_response.status.should == 200
+              last_response.body.should == "You've been already logged"
+           end
+           
+           it "should return a message if everything goes on" do
+              u = User.new
+              u.login = "ok1"
+              u.password = "1ko"
+              u.save
+              post '/login' , params = {"login"=>"ok1", "password"=>"1ko","message"=>"","backup_url" => ""}              
+              last_response.status.should == 200
+              last_response.headers["HTTP_COOKIE"].should_not be nil
+              last_response.body.should  == "Authentification succeed"
+           end
+           
+           it "should print an error message if it doesn't know this login" do
+              post '/login' , params = {"login"=>"ok1", "password"=>"1ko","message"=>""}              
+              last_response.status.should == 404
+              last_response.body.should  == "This account doesn't exist"
+           end
+           
+           it "should return a formular if problem occured because of wrong password" do
+              u = User.new
+              u.login = "ok1"
+              u.password = "1ko"
+              u.save
+              post '/login' , params = {"login"=>"ok1", "password"=>"ok","message"=>""}              
+              last_response.status.should == 404
+              last_response.body.should_not be nil
+           end
+        end
+
+#-------------------------------------------------------------------------------------------------------
+        
+        context "to register an application" do
+           it "should return a formular" do
+              get '/s_auth/application/register'
+              last_response.status.should == 200
+              last_response.body.should_not be nil
+           end
+           
+           it "should create an application and return a secret" do
               u = User.new
               u.login = "ok"
               u.password = "ok"
               u.save
               post '/application', params = {"login"=>"ok", "password"=>"ok",:appli_name => "APPLI1"}
-              last_response.body.should == "Saving succeed"
+              last_response.headers.should_not be nil
+              last_response.body.should_not be nil
            end
            
-           it "should return Saving failed : this appli have already been registered if problem " do
+           it "should return a message if saving failed" do
               u = User.new
               u.login = "ok"
               u.password = "ok"
@@ -93,22 +119,42 @@ describe 'Authentification server' do
               a.name = "APPLI1"
               a.secret = "1234"
               a.save
-              post '/application', params = {"login"=>"ok", "password"=>"ok",:appli_name => "APPLI1"}
-              last_response.body.should == "Saving failed : this appli have already been registered"
+              post '/application', params = {"login"=>"ok", "password"=>"ok",:appli_name => "APPLI1","backup_url" => ""}
+              last_response.status.should == 404
+              last_response.body.should == "Saving failed : An application with this name has been already registered"
            end
-                    
-        end
-        
-        
-        context "when authenticating somebody on knowned application" do
-           
-           it "should return Le parametre de redirection est vide if backup_url not sets" do
+              
+           it "should return a message if saving failed" do
+              u = User.new
+              u.login = "ok"
+              u.password = "ok"
+              u.save
               a = Appli.new
               a.name = "APPLI1"
               a.secret = "1234"
               a.save
-              get '/s_auth/application/authenticate?APPLI1;'
-              last_response.body.should == "Le parametre de redirection est invalide"
+              post '/application', params = {"login"=>"ok", "password"=>"ok","appli_name" => "","backup_url" => ""}
+              last_response.status.should == 404
+              last_response.body.should_not be nil
+           end
+        end
+        
+        context "to authenticate somebody on knowned application" do
+           it "should return a formular" do
+              a = Appli.new
+              a.name = "APPLI1"
+              a.secret = "1234"
+              a.save
+              get '/s_auth/application/authenticate' , params = {"application"=> "APPLI1"}
+              last_response.status.should == 200
+              last_response.body.should_not be nil
+           end
+           
+           it "should return an error message if it doesn't know application which is tried to authenticate you" do
+              get '/s_auth/application/authenticate' ,params = {"application"=> "APPLI1" , "backup_url" => "/"}
+              last_response.should_not be_ok
+              last_response.status.should == 404
+              last_response.body.should == "Unknown application APPLI1"
            end
            
            it "should redirect you in the protect part of the application that you tried to reach if authentifiaction succeed and if application known" do
@@ -120,20 +166,25 @@ describe 'Authentification server' do
               u.login = "ok"
               u.password = "ok"
               u.save
-              post '/authenticate' , params = {"login" => "ok","password"=>"ok",:message => "" ,:backup_url => "/localhost:3289/protected"}
-              last_response.status.should == 500
-           end
-
-        end
-
-        
-        context "when authenticating somebody on unknowned application" do
-           it "should return Unknow application : APPLI1 if Authentification service does'nt know this application" do
-              get '/s_auth/application/authenticate?APPLI1;/localhost:3289/protected'
-              last_response.body.should == "Unknow application : APPLI1"
+              post '/authenticate' , params = {"application"=>"APPLI1","login" => "ok","password"=>"ok",:message => "" ,:backup_url => "/"}
+              last_response.headers.should_not be nil
+              last_response.should be_redirect
+              follow_redirect!
+              last_response.body.should == "Vous avez ete redirige apres authentification de l'application APPLI1"
            end
            
+           it "should return an error message if authentification failed" do
+              a = Appli.new
+              a.name = "APPLI1"
+              a.secret = "1234"
+              a.save
+              u = User.new
+              u.login = "ok"
+              u.password = "ok"
+              u.save
+              post '/authenticate' , params = {"login" => "ok","password"=>"okp",:message => "" ,:backup_url => "/"}
+              last_response.status.should == 404
+              last_response.body.should == "Authentification failed"
+           end
         end
-        
-
 end
