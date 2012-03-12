@@ -56,11 +56,16 @@ describe 'Authentification server' do
            end
            
            it "should return a message if you have been logged earlier" do
-              get '/s_auth/user/login' , rack_env={"HTTP_COOKIE" => "12=auth12"}
+                 u = User.new
+                 u.login = "ok1"
+                 u.password = "ok1"
+                 u.save
+                 post '/login' , params = {"login"=>"ok1", "password" => "ok1","message"=>"createaccount"}
+                 last_response.headers["Set-Cookie"].should_not be nil
+              get '/s_auth/user/login' , rack_env={"HTTP_COOKIE" => "#{cookie}"}
               last_response.should be_ok
               last_request.cookies.should_not be nil
-              last_response.status.should == 200
-              last_response.body.should == "You've been already logged"
+              last_response.body.should == "You've been already log in"
            end
            
            it "should return a message if everything goes on" do
@@ -70,8 +75,8 @@ describe 'Authentification server' do
               u.save
               post '/login' , params = {"login"=>"ok1", "password"=>"1ko","message"=>"","backup_url" => ""}              
               last_response.status.should == 200
-              last_response.headers["HTTP_COOKIE"].should_not be nil
-              last_response.body.should  == "Authentification succeed"
+              last_response.headers["Set_Cookie"].should_not be nil
+              last_response.body.should  == "Authentification succeed <a href=\"/disconnect\">Disconnect</a>"
            end
            
            it "should print an error message if it doesn't know this login" do
@@ -145,7 +150,7 @@ describe 'Authentification server' do
               a.name = "APPLI1"
               a.secret = "1234"
               a.save
-              get '/s_auth/application/authenticate' , params = {"application"=> "APPLI1"}
+              get '/s_auth/application/authenticate' , params = {"application"=> "APPLI1", "backup_url" => "/"}
               last_response.status.should == 200
               last_response.body.should_not be nil
            end
@@ -167,7 +172,7 @@ describe 'Authentification server' do
               u.password = "ok"
               u.save
               post '/authenticate' , params = {"application"=>"APPLI1","login" => "ok","password"=>"ok",:message => "" ,:backup_url => "/"}
-              last_response.headers.should_not be nil
+              last_response.headers["Set-Cookie"].should_not be nil
               last_response.should be_redirect
               follow_redirect!
               last_response.body.should == "Vous avez ete redirige apres authentification de l'application APPLI1"
@@ -182,7 +187,7 @@ describe 'Authentification server' do
               u.login = "ok"
               u.password = "ok"
               u.save
-              post '/authenticate' , params = {"login" => "ok","password"=>"okp",:message => "" ,:backup_url => "/"}
+              post '/authenticate' , params = {"application"=>"APPLI1","login" => "ok","password"=>"okp",:message => "" ,:backup_url => "/"}
               last_response.status.should == 404
               last_response.body.should == "Authentification failed"
            end

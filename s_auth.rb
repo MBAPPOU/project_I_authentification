@@ -11,7 +11,7 @@ helpers do
   #end
 
   def cookies
-     request.cookies
+     request.cookies["s_authcookie"]
   end
   
   def redirection
@@ -81,14 +81,11 @@ end
 
 get '/s_auth/user/login' do
    h = cookies
-   if h
-       h.each do |k,m| 
-          if auth(m)
+   if h 
+        if auth(h)
              status 200
-             body "You've been already logged"
-          end
-          break if auth(m)
-       end
+             body "You've been already log in"
+        end
    else
        status 200
        erb:"sessions/new", :locals => {:post => "/login",:accueil => "Log in", :message => "" , :backup_url => ""}
@@ -129,12 +126,16 @@ end
 post '/login' do
    if  (User.find_by_login(login) &&  (User.find_by_login(login).password == password) && !(createaccount?))
        session["current_user"] = login
-       uncookie = "#{generate_id}=auth#{generate_id}"
+       uncookie = "s_authcookie=auth#{generate_id}"
        auth[uncookie.split('=')[1]] = session
        status 200
        headers \
        "Set-Cookie" => "#{uncookie}"
-       body "Authentification succeed <a href=\"/disconnect\">Disconnect</a>"
+       if login == "super_user"
+           body "Authentification succeed <a href=\"/disconnect\">Disconnect</a> <a href=\"/administration\">Administrate</a>"
+       else
+           body "Authentification succeed <a href=\"/disconnect\">Disconnect</a>"
+       end
    else
       if !(User.find_by_login(login))
           status 404
@@ -148,35 +149,37 @@ post '/login' do
    end
 end
 
-get '/administration'
-h = cookies
-if h
-   h.each do |k,m| 
-          if auth(m) == "super_user"
+get '/administration' do
+   h = cookies
+   if h
+       if auth(h) == "super_user"
              status 200
-             body "<a href=\"/list_Appli\">Liste d'applications</a> <a href=\"/delete_Appli\">delete application</a> <a href=\"/delete_User\">delete user</a>"
-          end
-          break if auth(m) == "super_user"
+             body "<a href=\"/list_Appli\">Liste d'applications</a> <a href=\"/list_User\">Liste d'utilisateurs</a> <a href=\"/delete_Appli\">delete application</a> <a href=\"/delete_User\">delete user</a>"
+       else
+           status 404
+           redirect '/s_auth/user/login'
+       end
+   else
+       status 404
+       redirect '/s_auth/user/login'
    end
-else
-   status 404
-   redirect '/s_auth/user/login'
+
 end
 
 get '/delete_Appli' do
        h = cookies
        if h
-           h.each do |k,m| 
-                  if auth(m) == "super_user"
-                     status 200
-                     erb:"destroy" , :locals => {:accueil => "Delete an application" , :thing => "application" , :backup_url => "/administration", :post => "/delete_Appli"}
-                  end
-                  break if auth(m) == "super_user"
+           if auth(h) == "super_user"
+              status 200
+              erb:"destroy" , :locals => {:accueil => "Delete an application" , :thing => "application" , :backup_url => "/administration", :post => "/delete_Appli"}
+           else
+               status 404
+               redirect '/s_auth/user/login'
            end
-        else
+       else
            status 404
            redirect '/s_auth/user/login'
-        end
+       end
 end
 
 post '/delete_Appli' do
@@ -198,12 +201,12 @@ end
 get '/delete_User' do
        h = cookies
        if h
-        h.each do |k,m| 
-                  if auth(m) == "super_user"
-                     status 200
-                     erb:"destroy" , :locals => {:accueil => "Delete a user" , :thing => "user" , :backup_url => "/administration", :post => "/delete_User"}
-                  end
-                  break if auth(m) == "super_user"
+           if auth(h) == "super_user"
+              status 200
+              erb:"destroy" , :locals => {:accueil => "Delete a user" , :thing => "user" , :backup_url => "/administration", :post => "/delete_User"}
+           else
+               status 404
+               redirect '/s_auth/user/login'
            end
        else
            status 404
@@ -228,22 +231,24 @@ post '/delete_User' do
 end
 
 get '/list_Appli' do
-   applis = Appli.find_all_by_name   
-   body "#{applis}"
+   applis = []
+   Appli.all.each{|p| applis << p}
+   body "#{applis.inspect}"
 end
 
-get '/disconnnect' do
+get '/list_User' do
+   user = []
+   User.all.each{|u| applis << u}
+   body "#{applis.inspect}"
+end
+
+get '/disconnect' do
    h = cookies
-   a = false
    if h
-       h.each do |k,m| 
-          if auth(m)
-             status 200
-             disconnect(m)
-             a = true
-             body "You're disconnect"
-          end
-          break if a
+       if auth(h)
+           status 200
+           disconnect(h)
+           body "You're disconnect"
        end
    else
         status 404
@@ -265,7 +270,7 @@ end
 post '/application' do
    if  (User.find_by_login(login) &&  (User.find_by_login(login).password == password))
        session["current_user"] = login
-       uncookie = "generate_id=auth#{generate_id}"
+       uncookie = "s_authcookie=auth#{generate_id}"
        auth[uncookie.split('=')[1]] = session
        if params[:appli_name]
             if (Appli.find_by_name(params[:appli_name]))
@@ -306,26 +311,22 @@ get '/s_auth/application/authenticate' do
    application = params[:application]
    backup_url = params[:backup_url]
    if Appli.find_by_name(application) # Application connue
-        if h # Le client a un cookie
-            h.each do |k,m| 
-                 if auth(m) # on identifie le client
-                     status 200
-                     if backup_url
-                         a = Appli.find_by_name(application).secret
-                         redirect "#{backup_url}?secret=#{a}"
-                     else
-                         body "You're have been already authenticate"
-                     end
+         if h 
+            if auth(h) # on identifie le client
+                 status 200
+                 if backup_url
+                     a = Appli.find_by_name(application).secret
+                     redirect "#{backup_url}?secret=#{a}"
+                 else
+                     body "You're have been already authenticate"
                  end
-                 break if auth(m)
             end
         else
-            if backup_url 
+            if backup_url
                 erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in" , :message => "" , :backup_url => "#{backup_url}"}
             else
                 status 404
                 erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in" , :message => "" , :backup_url => ""}
-               # body "Le parametre de redirection est invalide"
             end
         end
    else
@@ -339,7 +340,7 @@ post '/authenticate' do
    if (User.find_by_login(login) && User.find_by_login(login).password == password && !(createaccount?))
         secret = Appli.find_by_name(application).secret
         session["current_user"] = login
-        uncookie = "generate_id=auth#{generate_id}"
+        uncookie = "s_authcookie=auth#{generate_id}"
         auth[uncookie.split('=')[1]] = session
         if redirection
             headers \
