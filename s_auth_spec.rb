@@ -20,7 +20,6 @@ describe 'Authentification server' do
         context "to register somebody" do
            it "should return a formular" do
               get '/s_auth/user/register'
-              last_response.should be_ok
               last_response.status.should == 200
               last_response.body.should_not be nil
            end
@@ -40,7 +39,7 @@ describe 'Authentification server' do
               last_response.body.should  == "An account with these arguments already exists"
            end
            
-           it "should return again a formular when no password or login put in the first formular" do
+           it "should return twice a formular when no password or no login put in the first formular" do
               post '/register' , params = {:login=>"ok1",:password => "",:message=>"createaccount"}              
               last_response.should be_redirect
               follow_redirect!
@@ -125,7 +124,7 @@ describe 'Authentification server' do
               a.save
               post '/application', params = {:login=>"ok", :password=>"ok",:appli_name => "APPLI1",:backup_url => ""}
               last_response.status.should == 404
-              last_response.body.should == "Saving failed : An application with this name has been already registered"
+              last_response.body.should == "Saving failed : An application with this name has been already registered  <a href=\"/s_auth/application/register\">Register an application</a>"
            end
               
            it "should redirect you on register application page if saving failed" do
@@ -139,7 +138,9 @@ describe 'Authentification server' do
               a.save
               post '/application', params = {:login=>"ok", :password=>"ok",:appli_name => "",:backup_url => ""}
               last_response.should be_redirect
-              last_response.path.should == '/s_auth/application/register'
+              follow_redirect!
+              last_request.path.should == '/s_auth/application/register'
+              last_request.params.should_not be nil
               last_response.body.should_not be nil
            end
         end
@@ -150,8 +151,8 @@ describe 'Authentification server' do
               a.name = "APPLI1"
               a.secret = "1234"
               a.save
-              get '/s_auth/application/authenticate' , params = {:application=> "APPLI1", :backup_url => "/test"}
-              last_response.status.should be_ok
+              get '/s_auth/application/authenticate?application=APPLI1;backup_url=/test' #, params = {:application => "APPLI1", :backup_url => "/test"}
+              last_response.status.should == 200
               last_response.body.should_not be nil
            end
            

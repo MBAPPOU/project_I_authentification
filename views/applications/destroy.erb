@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Destruction page</title>
+</head>
+<body>
+
+<h1>Delete Application</h1>
+
+<form action="/delete_Appli" method="post">
+  <div class="field">
+    <label for="application">Application</label><br />
+    <input id="application" name="application" size="50" type="text" />
+  </div>
+  
+  <div class="actions">
+    <input id="backup_url" name="backup_url" size="100" type="hidden" value="/list_Appli" />
+    <input name="commit" type="submit" value="Destroy" />
+  </div>
+  
+  
+  
+</form>
+
+</body>
+</html>
+
