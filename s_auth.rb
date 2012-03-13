@@ -3,19 +3,31 @@ require 'sinatra'
 require 'database'
 require 'user'
 require 'appli'
+#require_relative 'Rack/rack_cookie_session'
+#require_relative 'Rack/rack_session'
+
+
+use Rack::Session::Cookie, :key => 'rack.session',
+                           :expire_after => 2592000,
+                           :secret => 'super_user'
+                           
+#use Rack::Session::Pool, :expire_after => 2592000
+
+#use RackCookieSession
+#use RackSession
 
 helpers do
 
-  #def current_user(word)
-    #session[word]
-  #end
+  def current_user
+    session["current_user"]
+  end
 
   def cookies
      request.cookies["s_authcookie"]
   end
   
   def redirection
-     params[:backup_url] if (params[:backup_url] != "" && params[:backup_url] != "<% backup_url %>")
+     params[:backup_url] 
   end
   
   def createaccount?
@@ -42,25 +54,23 @@ helpers do
     rand(2**bit_size - 1)
   end
   
-  def auth(word1)
-     auth[word1]["current_user"] if auth[word1]
+  def auth
+     
   end
-  
-  def initializeauth
-     session["current_user"] = "test"
-     auth["auth12"] = session
-  end
-  
-  def disconnect(cookie)
-     auth.delete[cookie]
+    
+  def disconnect
+     session["current_user"] = nil
   end
 
 end
 
+#get '/test' do
+   #body "#{request.env}"
+#end
 
-get '/' do
+
+get '/test' do
    if params[:secret]
-      status 200
       body "Vous avez ete redirige apres authentification de l'application APPLI1"
    else
       status 404
@@ -68,6 +78,21 @@ get '/' do
    end
 end
 
+get '/' do
+   if current_user == "super_user"
+      if redirection
+           redirect "#{redirection}" #if redirection != "/" or redirection != ""
+       else
+           body "Welcome #{current_user} \n \n <a href=\"/disconnect\">Disconnect</a> \n <a href=\"/administration\">Administrate</a>"
+       end
+   else
+       if redirection
+           redirect "#{redirection}" 
+       else
+           body "Welcome #{current_user} \n \n <a href=\"/disconnect\">Disconnect</a>"
+       end
+   end
+end
 
 #-----------------------------------------------------------------------------------
 # Authenfication et Création de compte directement sur le service d'authentification
@@ -75,123 +100,98 @@ end
 #-----------------------------------------------------------------------------------
 
 get '/s_auth/user/register' do
+   message = params[:message]
    status 200
-   erb:"sessions/new", :locals => {:post => "/register",:accueil => "Register now" , :message => "createaccount" , :backup_url => ""}
+   erb:"sessions/new", :locals => {:commit => "Create Session#{message}",:post => "/register",:accueil => "Register now" , :message => "createaccount" , :backup_url => ""}
 end
 
 get '/s_auth/user/login' do
-   h = cookies
-   if h 
-        if auth(h)
-             status 200
-             body "You've been already log in"
-        end
+   if current_user
+           if current_user == "super_user"
+                if redirection != ""
+                    redirect "#{redirection}" #if redirection != "/" or redirection != ""
+                else
+                    body "Welcome #{current_user} \n \n <a href=\"/disconnect\">Disconnect</a> \n <a href=\"/administration\">Administrate</a>"
+                end
+           else
+               if redirection != ""
+                   redirect "#{redirection}" 
+               else
+                   body "Welcome #{current_user} \n \n <a href=\"/disconnect\">Disconnect</a>"
+               end
+           end
    else
+       message = params[:message]
        status 200
-       erb:"sessions/new", :locals => {:post => "/login",:accueil => "Log in", :message => "" , :backup_url => ""}
+       erb:"sessions/new", :locals => {:commit => "Log in#{message}",:post => "/login",:accueil => "Log in", :message => "" , :backup_url => "#{redirection}"}
    end
 end
 
 post '/register' do
-   if (login && password && createaccount?)
+   if (login && login != "" && password && password != "" && createaccount?)
        if (User.find_by_login(login) && User.find_by_login(login).password == password)
            status 404
            body "An account with these arguments already exists"
        else # Nouvel utilisateur
-               u = User.new
-               u.login = login
-               u.password = password
-               u.save
-               status 200
-               # body "Registring succeed : Login : #{login} Password : #{password}"
-               # sleep 3
-               redirect '/s_auth/user/login'
+           u = User.new
+           u.login = login
+           u.password = password
+           u.save
+           status 200
+           body "Registering succeed <a href=/s_auth/user/login>Log in</a>"
        end
    else
-       if !login # pas de login
-           status 404
-           erb:"sessions/new", :locals => {:post => "/register",:accueil => "Register now : Field login is empty" , :message => "createaccount" , :backup_url => ""}
-       else
-           if !password # pas de mpd
-               status 404
-               erb:"sessions/new", :locals => {:post => "/register",:accueil => "Register now : Field password is empty" , :login => "#{login}", :message => "createaccount" , :backup_url => ""}
-           else # createaccount? => false
-               status 404
-               erb:"sessions/new", :locals => {:post => "/register",:accueil => "Register now : An error occured ! try again" , :message => "createaccount" , :backup_url => ""}
-           end
-       end
+      redirect '/s_auth/user/register?message=:Regsistering failed'
    end
 end
 
 post '/login' do
-   if  (User.find_by_login(login) &&  (User.find_by_login(login).password == password) && !(createaccount?))
-       session["current_user"] = login
-       uncookie = "s_authcookie=auth#{generate_id}"
-       auth[uncookie.split('=')[1]] = session
-       status 200
-       headers \
-       "Set-Cookie" => "#{uncookie}"
-       if login == "super_user"
-           body "Authentification succeed <a href=\"/disconnect\">Disconnect</a> <a href=\"/administration\">Administrate</a>"
-       else
-           body "Authentification succeed <a href=\"/disconnect\">Disconnect</a>"
-       end
+    if User.find_by_login(login) &&  (User.find_by_login(login).password == password) && (not createaccount?)
+        session["current_user"] = login
+        if current_user == "super_user"
+             if redirection != ""
+                 redirect "#{redirection}" #if redirection != "/" or redirection != ""
+             else
+                 body "Welcome #{current_user} \n \n <a href=\"/disconnect\">Disconnect</a> \n <a href=\"/administration\">Administrate</a>"
+             end
+        else
+           if redirection != ""
+               redirect "#{redirection}" 
+           else
+              body "Welcome #{current_user} \n \n <a href=\"/disconnect\">Disconnect</a>"
+           end
+        end
    else
-      if !(User.find_by_login(login))
-          status 404
-          body "This account doesn't exist"
-      else
-          if !(User.find_by_login(login).password == password)
-             status 404
-             erb:"sessions/new", :locals => {:post => "/login",:accueil => "Log in : wrong password" , :message => "" , :backup_url => ""}
-          end
-      end    
+       redirect '/s_auth/user/login?message=:Authentification failed'
    end
 end
 
 get '/administration' do
-   h = cookies
-   if h
-       if auth(h) == "super_user"
-             status 200
-             body "<a href=\"/list_Appli\">Liste d'applications</a> <a href=\"/list_User\">Liste d'utilisateurs</a> <a href=\"/delete_Appli\">delete application</a> <a href=\"/delete_User\">delete user</a>"
-       else
-           status 404
-           redirect '/s_auth/user/login'
-       end
+   if current_user == "super_user"
+       body "<a href=\"/list_Appli\">Applications list</a> \n <a href=\"/list_User\">Users list</a> <a href=\"/delete_Appli\">delete application</a> <a href=\"/delete_User\">delete user</a>"
    else
-       status 404
-       redirect '/s_auth/user/login'
+       redirect '/s_auth/user/login?backup_url=/administration'
    end
-
 end
 
 get '/delete_Appli' do
-       h = cookies
-       if h
-           if auth(h) == "super_user"
-              status 200
-              erb:"destroy" , :locals => {:accueil => "Delete an application" , :thing => "application" , :backup_url => "/administration", :post => "/delete_Appli"}
-           else
-               status 404
-               redirect '/s_auth/user/login'
-           end
-       else
-           status 404
-           redirect '/s_auth/user/login'
-       end
+   if current_user == "super_user"
+       status 200
+       erb:"destroy" , :locals => {:accueil => "Delete an application" , :thing => "application" , :backup_url => "", :post => "/delete_Appli"}
+   else
+       redirect '/s_auth/user/login?backup_url=/delete_Appli'
+   end
 end
 
 post '/delete_Appli' do
    if params[:application]
-        a = Appli.find_by_name(params[:application])
-        if a 
-            a.destroy
-            redirect "#{redirection}"
-        else
+       if Appli.find_by_name(params[:application])
+           Appli.find_by_name(params[:application]).destroy
+           redirect "/list_Appli"
+       else
            status 404
            body "This application doesn't exist in database"
-        end
+       end
    else
        status 404
        body "Field application is empty or doesn't exist"
@@ -199,60 +199,58 @@ post '/delete_Appli' do
 end
 
 get '/delete_User' do
-       h = cookies
-       if h
-           if auth(h) == "super_user"
-              status 200
-              erb:"destroy" , :locals => {:accueil => "Delete a user" , :thing => "user" , :backup_url => "/administration", :post => "/delete_User"}
-           else
-               status 404
-               redirect '/s_auth/user/login'
-           end
-       else
-           status 404
-           redirect '/s_auth/user/login'
-       end  
+   if current_user == "super_user"
+       status 200
+       erb:"destroy" , :locals => {:accueil => "Delete a user" , :thing => "user" , :backup_url => "", :post => "/delete_User"}
+   else
+       redirect '/s_auth/user/login?backup_url=/delete_User'
+   end 
 end
 
 post '/delete_User' do
    if params[:user]
-        u = Appli.find_by_name(params[:user])
-        if u 
-            u.destroy
-            redirect "#{redirection}"
-        else
-           status 404
-           body "This account doesn't exist in database"
-        end
+       u = User.find_by_name(params[:user])
+       if u 
+           u.destroy
+           redirect "/list_User"
+       else
+          status 404
+          body "This account doesn't exist in database"
+       end
    else
-       status 404
-       body "Field user is empty or doesn't exist"
+      status 404
+      body "Field user is empty or doesn't exist"
    end
 end
 
 get '/list_Appli' do
-   applis = []
-   Appli.all.each{|p| applis << p}
-   body "#{applis.inspect}"
+   if current_user
+       applis = []
+       Appli.all.each{|p| applis << p.name}
+       body "Applications List : #{applis.inspect}        <a href=\"/administration\">Back</a>"
+   else
+       redirect '/s_auth/user/login?backup_url=/list_Appli'
+   end
 end
 
 get '/list_User' do
-   user = []
-   User.all.each{|u| applis << u}
-   body "#{applis.inspect}"
+   if current_user == "super_user"
+       user = []
+       User.all.each{|u| user << u.login}
+       body "Users List : #{user.inspect}            <a href=\"/administration\">Back</a>"
+   else
+       redirect '/s_auth/user/login?backup_url=/list_User'
+   end
 end
 
 get '/disconnect' do
-   h = cookies
-   if h
-       if auth(h)
-           status 200
-           disconnect(h)
-           body "You're disconnect"
-       end
+   if current_user
+       status 200
+       disconnect
+       body "You're disconnect \n \n <a href=\"/s_auth/user/login\">Log in</a>"
    else
-        status 404
-        body "You were not connect!"
+       status 404
+       body "You were not connect!"
    end
 end
 
@@ -263,15 +261,14 @@ end
 #-----------------------------------------------------------------------------------
 
 get '/s_auth/application/register' do
+   message = params[:message]
    status 200
-   erb:"applications/new", :locals => {:post => "/application",:accueil => "Register an application" , :backup_url => ""}
+   erb:"applications/new", :locals => {:post => "/application",:accueil => "Register an application#{message}" , :backup_url => ""}
 end
 
 post '/application' do
    if  (User.find_by_login(login) &&  (User.find_by_login(login).password == password))
        session["current_user"] = login
-       uncookie = "s_authcookie=auth#{generate_id}"
-       auth[uncookie.split('=')[1]] = session
        if params[:appli_name]
             if (Appli.find_by_name(params[:appli_name]))
                 status 404
@@ -282,24 +279,13 @@ post '/application' do
                 a.secret = generate_secret
                 a.save
                 status 200
-                headers \
-                "Set-Cookie" => "#{uncookie}"
                 body "Saving succeed : your secret is #{a.secret}"
             end
        else
-           status 404
-           erb:"applications/new", :locals => {:post => "/application",:accueil => "Register an application : Field Application name is empty" ,:login => "#{login}" ,:password => "#{password}" ,:backup_url => ""}
+           redirect '/s_auth/application/register?message=:Field Application is empty'
        end
    else
-      if !(User.find_by_login(login))
-          status 404
-          erb:"applications/new", :locals => {:post => "/application",:accueil => "Register an application : This account doesn't exist" , :backup_url => ""}
-      else
-          if !(User.find_by_login(login).password == password)
-             status 404
-             erb:"applications/new", :locals => {:post => "/application",:accueil => "Register an application : bad password" ,:login => "#{login}" , :backup_url => ""}
-          end
-      end    
+       redirect '/s_auth/application/register?message=:Authentification failed'
    end            
 end
 
@@ -307,65 +293,46 @@ end
 # Authentification venant d'une application
 #-----------------------------------------------------------------------------------
 get '/s_auth/application/authenticate' do
-   h = cookies
    application = params[:application]
-   backup_url = params[:backup_url]
    if Appli.find_by_name(application) # Application connue
-         if h 
-            if auth(h) # on identifie le client
-                 status 200
-                 if backup_url
-                     a = Appli.find_by_name(application).secret
-                     redirect "#{backup_url}?secret=#{a}"
-                 else
-                     body "You're have been already authenticate"
-                 end
+        if current_user
+            if redirection != ""
+                 secret = Appli.find_by_name(application).secret
+                 redirect "#{backup_url}?secret=#{secret}"
+            else
+                 body "You're have been already authenticate"
             end
         else
-            if backup_url
-                erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in" , :message => "" , :backup_url => "#{backup_url}"}
+            if redirection != ""
+                status 200
+                erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in" , :message => "" , :backup_url => "#{redirection}"}
             else
-                status 404
+                status 200
                 erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in" , :message => "" , :backup_url => ""}
             end
         end
    else
-        status 404
-        body "Unknown application #{application}"
+       status 404
+       body "Unknown application #{application}"
    end
 end
 
 post '/authenticate' do
-   application = params[:application] # application ayant sollicité l'authentification
-   if (User.find_by_login(login) && User.find_by_login(login).password == password && !(createaccount?))
+   application = params[:application]
+   if User.find_by_login(login) && User.find_by_login(login).password == password
         secret = Appli.find_by_name(application).secret
         session["current_user"] = login
-        uncookie = "s_authcookie=auth#{generate_id}"
-        auth[uncookie.split('=')[1]] = session
-        if redirection
-            headers \
-            "Set-Cookie" => "#{uncookie}"
+        if redirection != ""
             redirect "#{redirection}?secret=#{secret}"
         else
-            headers \
-            "Set-Cookie" => "#{uncookie}"
             body "You're log in"
         end
    else
-        status 404
-        body "Authentification failed"
+       if redirection != ""
+           redirect "#{redirection}"
+       else
+           status 404
+           body "Authentification failed"
+       end
    end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
