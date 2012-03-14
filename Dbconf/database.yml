@@ -1,5 +1,11 @@
-database:
+developpement:
   adapter: sqlite3
   database: "Db/BDD.sqlite3"
+  pool: 5
+  timeout: 5000
+  
+production:
+  adapter: sqlite3
+  database: "Db/BDD1.sqlite3"
   pool: 5
   timeout: 5000

@@ -307,7 +307,7 @@ get '/s_auth/application/authenticate' do
             if redirection != "%"
                  secret = Appli.find_by_name(application).secret
                  auth = Authentification.new
-                 auth.user = current_user
+                 auth.user = User.find_by_login(current_user)
                  auth.application = Appli.find_by_name(application).name
                  auth.save
                  redirect "#{redirection}?secret=#{secret};user=#{current_user}"
