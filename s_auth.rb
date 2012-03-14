@@ -11,7 +11,7 @@ use Rack::Session::Cookie, :key => 'rack.session',
                            :expire_after => 2592000,
                            :secret => 'super_user'
                            
-set :protection
+
                            
 #use Rack::Session::Pool, :expire_after => 2592000
 
@@ -290,7 +290,7 @@ post '/application' do
             else
                 a = Appli.new
                 a.name = params[:appli_name]
-                a.secret = generate_secret
+                a.secret = generate_secret(4)
                 a.save
                 status 200
                 body "Saving succeed : your secret is #{a.secret}"
@@ -313,14 +313,14 @@ get '/s_auth/application/authenticate' do
         if current_user
             if redirection != "%"
                  secret = Appli.find_by_name(application).secret
-                 redirect "#{backup_url}?secret=#{secret}"
+                 redirect "#{redirection}?secret=#{secret};user=#{current_user}"
             else
                  body "You're have been already authenticate"
             end
         else
             if redirection != "%"
                 status 200
-                erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => "#{redirection}"}
+                erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => "#{redirection}",:commit => "Log in"}
             else
                 status 200
                 erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => ""}
@@ -338,7 +338,7 @@ post '/authenticate' do
         secret = Appli.find_by_name(application).secret
         session["current_user"] = login
         if redirection != "%"
-            redirect "#{redirection}?secret=#{secret}"
+            redirect "#{redirection}?secret=#{secret};user=#{current_user}"
         else
             body "You're log in"
         end
