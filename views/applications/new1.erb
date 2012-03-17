@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>application recording page</title>
+</head>
+<body>
+
+<h1> <%= accueil %> </h1>
+
+<form action="<%= post %>" method="post">
+  
+  <div class="field">
+    <label for="application_name">Application name</label><br />
+    <input id="application_name" name="application_name" size="50" type="text" />
+  </div>
+  
+  <div class="actions">
+    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="<%= backup_url %>" />
+    <input name="commit" type="submit" value="Record application" />
+    
+  </div>
+  
+  
+  <a href="/s_auth/protected">Back</a>
+  
+  
+</form>
+
+</body>
+</html>
+
