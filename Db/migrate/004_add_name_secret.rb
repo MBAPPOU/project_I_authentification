@@ -5,8 +5,8 @@ class AddNameSecret < ActiveRecord::Migration
   end
 
   def down
-    add_column :applis,:name,:string
-    add_column :applis,:secret,:integer
+    remove_column :applis,:name,:string
+    remove_column :applis,:secret,:integer
   end
   
 end

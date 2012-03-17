@@ -1,12 +1,14 @@
 class AddUserAppli < ActiveRecord::Migration
   def up
-    add_column :authentifications,:user,:string
-    add_column :authentifications,:application,:string
+    add_column :authentifications,:user,:user_id
+    add_column :authentifications,:application,:appli_id
+    add_column :authentifications,:created,:created_at
   end
 
   def down
-    add_column :authentifications,:user,:string
-    add_column :authentifications,:application,:string
+    remove_column :authentifications,:user
+    remove_column :authentifications,:application
+    remove_column :authentifications,:created
   end
   
 end
