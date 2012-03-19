@@ -87,6 +87,9 @@ end
 # Creer un compte
 get '/s_auth/user/register' do
    message = params[:message]
+   if redirection == "%"
+      redirection = ""
+   end
    status 200
    erb:"sessions/new", :locals => {:commit => "Create Session",:post => "/register",:accueil => "Register #{message}" , :message => "createaccount",:backup_url => "#{redirection}" }
 end
@@ -116,39 +119,42 @@ end
 # Se loguer
 get '/s_auth/user/login' do
    if current_user
-       redirect "/s_auth/protected"
+       redirect "/s_auth/user/protected"
    else
        message = params[:message]
+       if redirection == "%"
+          redirection = ""
+       end
        status 200
        erb:"sessions/new", :locals => {:commit => "Log in",:post => "/login",:accueil => "Log in #{message}", :message => "" , :backup_url => "#{redirection}"}
    end
 end
 
 post '/login' do
-    if login != "" && password != "" && User.find_by_login(login) &&  (User.find_by_login(login).password == password) && (not createaccount?)
+   if login != "" && password != "" && User.find_by_login(login) &&  (User.find_by_login(login).password == password) && (not createaccount?)
         session["current_user"] = login
-        redirect "/s_auth/protected"
+        redirect "/s_auth/user/protected"
    else
-       redirect '/s_auth/user/login?message=failed'
+       redirect "/s_auth/user/login?message=failed"
    end
 end
 
 # Partie protégée de l'application
-get '/s_auth/protected' do
+get '/s_auth/user/protected' do
 if current_user   
    if current_user == "super_user"
        if redirection != "%"
            redirect "#{redirection}"
        else
            status 200
-           body "Welcome \"#{current_user}\" </br></br> <a href=\"/s_auth/protected/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/protected/administration\">Administrate</a> </br> <a href=\"/s_auth/protected/disconnect\">Disconnect</a>"
+           body "Welcome \"#{current_user}\" </br></br> <a href=\"/s_auth/user/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/user/administration\">Administrate</a> </br> <a href=\"/s_auth/user/disconnect\">Disconnect</a>"
        end
    else
       if redirection != "%"
            redirect "#{redirection}"
       else
           status 200
-          body "Welcome \"#{current_user}\" </br></br> <a href=\"/s_auth/protected/list_Appli\">Applications list</a> </br> <a href=\"/s_auth/protected/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/application/register\">Register an application</a> </br>  <a href=\"/s_auth/protected/delete_Appli\">delete an application</a> </br> <a href=\"/s_auth/protected/disconnect\">Disconnect</a>"
+          body "Welcome \"#{current_user}\" </br></br> <a href=\"/s_auth/user/list_Appli\">Applications list</a> </br> <a href=\"/s_auth/user/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/application/register\">Register an application</a> </br>  <a href=\"/s_auth/user/delete_Appli\">delete an application</a> </br> <a href=\"/s_auth/user/disconnect\">Disconnect</a>"
       end
    end
 else
@@ -157,7 +163,7 @@ end
 end
 
 # Applis ayant authentifié un utilisateur
-get '/s_auth/protected/usedApplis' do
+get '/s_auth/user/usedApplis' do
    if current_user
        tmp = User.find_by_login(current_user)
        used = Authentification.find_all_by_user(tmp.id)
@@ -169,25 +175,25 @@ get '/s_auth/protected/usedApplis' do
               infos << r.name
           end
        end
-       body "#{infos.inspect} </br></br> <a href=\"/s_auth/protected\">Back</a>"
+       body "#{infos.inspect} </br></br> <a href=\"/s_auth/user/protected\">Back</a>"
    else
-       redirect '/s_auth/user/login?backup_url=/s_auth/protected/usedApplis'
+       redirect '/s_auth/user/login?backup_url=/s_auth/user/usedApplis'
    end
 end
 
 #--------------------------------------------------------
 # Partie d'administration du service d'authentification
 #--------------------------------------------------------
-get '/s_auth/protected/administration' do
+get '/s_auth/user/administration' do
    if current_user == "super_user"
-       body "<a href=\"/s_auth/protected/list_Appli\">Applications list</a> \n <a href=\"/s_auth/protected/list_User\">Users list</a> <a href=\"/s_auth/protected/delete_Appli\">delete application</a> <a href=\"/s_auth/application/register\">add application</a> <a href=\"/s_auth/protected/delete_User\">delete user</a> <a href=\"/s_auth/user/register\">add user</a> <a href=\"/s_auth/protected\">Back</a>"
+       body "<a href=\"/s_auth/user/list_Appli\">Applications list</a> \n <a href=\"/s_auth/user/list_User\">Users list</a> <a href=\"/s_auth/user/delete_Appli\">delete application</a> <a href=\"/s_auth/application/register\">add application</a> <a href=\"/s_auth/user/delete_User\">delete user</a> <a href=\"/s_auth/user/register\">add user</a> <a href=\"/s_auth/user/protected\">Back</a>"
    else
-       redirect '/s_auth/user/login?backup_url=/s_auth/protected/administration'
+       redirect '/s_auth/user/login?backup_url=/s_auth/user/administration'
    end
 end
 
 # Supprimer une application
-get '/s_auth/protected/delete_Appli' do
+get '/s_auth/user/delete_Appli' do
    if current_user
        status 200
        body eval "erb:\"applications/destroy\""
@@ -196,52 +202,47 @@ get '/s_auth/protected/delete_Appli' do
    end
 end
 
-post '/s_auth/protected/delete_Appli' do
+post '/s_auth/user/delete_Appli' do
     if params[:application]
         a = Appli.find_by_name(params[:application])
         if a
-            if a.author == current_user #|| (current_user == "super_user")
+            if a.author == current_user || current_user == "super_user"
                 a.destroy
-                redirect '/s_auth/protected/list_Appli'
+                redirect '/s_auth/user/list_Appli'
             else
-                if current_user == "super_user"
-                    a.destroy
-                    redirect '/s_auth/protected/list_Appli'
-                else
+                #if current_user == "super_user"
+                    #a.destroy
+                    #redirect '/s_auth/protected/list_Appli'
+                #else
                     status 404
-                   body "You're not the author of application \"#{params[:application]}\" and you don't have rights to delete it </br> <a href=\"/s_auth/protected\">Back</a>"
-                end
+                    body "You're not the author of application \"#{params[:application]}\" and you don't have rights to delete it </br> <a href=\"/s_auth/user/protected\">Back</a>"
+                #end
             end
        else
            status 404
-           body "Unknow application </br> <a href=\"/s_auth/protected\">Back</a>"
+           body "Unknow application </br> <a href=\"/s_auth/user/protected\">Back</a>"
        end
    else
-       if params[:application] != ""
-           redirect '/s_auth/protected/delete_Appli?message=Fied_empty'
-       else
-           status 404
-           body "You're not the author of application : #{params[:application]} </br> <a href=\"/s_auth/protected\">Back</a>"
-       end
+       redirect '/s_auth/user/delete_Appli?message=Fied_empty'
    end
 end
 
 # Supprimmer un utilisateur
-get '/s_auth/protected/delete_User' do
+get '/s_auth/user/delete_User' do
    if current_user == "super_user"
        status 200
        erb:"sessions/destroy"
    else
-       redirect '/s_auth/user/login?backup_url=/s_auth/protected/delete_User'
+       redirect '/s_auth/user/login?backup_url=/s_auth/delete_User'
    end 
 end
 
-post '/s_auth/protected/delete_User' do
+post '/s_auth/user/delete_User' do
    if params[:user]
        u = User.find_by_login(params[:user])
        if u 
            u.destroy
-           redirect "/s_auth/protected/list_User"
+           redirect "/s_auth/user/list_User"
        else
           status 404
           body "This account doesn't exist in database"
@@ -253,29 +254,29 @@ post '/s_auth/protected/delete_User' do
 end
 
 # Lister les applications enregistrées
-get '/s_auth/protected/list_Appli' do
+get '/s_auth/user/list_Appli' do
    if current_user
        applis = []
        Appli.all.each{|p| applis << p.name}
-       body "Applications List : #{applis.inspect}    </br></br>    <a href=\"/s_auth/protected/administration\">Back</a>"
+       body "Applications List : #{applis.inspect}    </br></br>    <a href=\"/s_auth/user/administration\">Back</a>"
    else
-       redirect '/s_auth/user/login?backup_url=/s_auth/protected/list_Appli'
+       redirect '/s_auth/user/login?backup_url=/s_auth/user/list_Appli'
    end
 end
 
 # Lister les comptes utilisateurs enregistrés
-get '/s_auth/protected/list_User' do
+get '/s_auth/user/list_User' do
    if current_user == "super_user"
        user = []
        User.all.each{|u| user << u.login}
-       body "Users List : #{user.inspect}    </br></br>        <a href=\"/s_auth/protected/administration\">Back</a>"
+       body "Users List : #{user.inspect}    </br></br>        <a href=\"/s_auth/user/administration\">Back</a>"
    else
-       redirect '/s_auth/user/login?backup_url=/s_auth/protected/list_User'
+       redirect '/s_auth/user/login?backup_url=/s_auth/user/list_User'
    end
 end
 
 # Se déconnecter
-get '/s_auth/protected/disconnect' do
+get '/s_auth/user/disconnect' do
    if current_user
        status 200
        disconnect
@@ -306,7 +307,7 @@ post '/application' do
    if params[:application_name] != ""
        if Appli.find_by_name(params[:application_name])
            status 404
-           body "Saving failed : An application with this name has been already registered  </br></br> <a href=\"/s_auth/application/register\">Register an application</a>  <a href=\"/s_auth/protected\">Back</a>"
+           body "Saving failed : An application with this name has been already registered  </br></br> <a href=\"/s_auth/application/register\">Register an application</a>  <a href=\"/s_auth/user/protected\">Back</a>"
        else
           a = Appli.new
           a.name = params[:application_name]
@@ -314,7 +315,7 @@ post '/application' do
           a.secret = generate_secret(32)
           a.save!
           status 200
-          body "Saving succeed </br></br> Your secret is #{a.secret} </br> <a href=\"/s_auth/protected\">Back</a>" 
+          body "Saving succeed </br></br> Your secret is #{a.secret} </br> <a href=\"/s_auth/user/protected\">Back</a>" 
        end
    else
        redirect '/s_auth/application/register?message=application_empty'
@@ -329,28 +330,21 @@ get '/s_auth/application/authenticate' do
    message = params[:message]
    if application != "" && Appli.find_by_name(application) # Application connue
         if current_user
+            secret = Appli.find_by_name(application).secret
+            auth = Authentification.new
+            auth.user = User.find_by_login(current_user).id
+            auth.application = Appli.find_by_name(application).id
+            auth.save!
             if redirection != "%"
-                 secret = Appli.find_by_name(application).secret
-                 auth = Authentification.new
-                 auth.user = User.find_by_login(current_user).id
-                 auth.application = Appli.find_by_name(application).id
-                 auth.save!
                  redirect "#{redirection}?secret=#{secret};user=#{current_user}"
             else
-                 auth = Authentification.new
-                 auth.user = User.find_by_login(current_user).id
-                 auth.application = Appli.find_by_name(application).id
-                 auth.save!
-                 body "You're have been already authenticate"
+                body "You're have been already authenticate"
             end
         else
             if redirection != "%"
-                status 200
-                erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => "#{redirection}",:commit => "Log in"}
-            else
-                status 200
-                erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => ""}
+                redirection = ""
             end
+            erb:"sessions/new", :locals => {:post => "/authenticate?application=#{application}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => "#{redirection}",:commit => "Log in"}
         end
    else
        status 404
@@ -373,11 +367,12 @@ post '/authenticate' do
             body "You're log in"
         end
    else
-       if redirection != "%"
-           redirect "#{redirection}"
-       else
-           status 404
-           body "Authentification failed"
-       end
+       redirect "/s_auth/application/authenticate?application=#{application}&&backup_url=#{redirection}"
+       #if redirection != "%"
+           #redirect "#{redirection}"
+       #else
+           #status 404
+           #body "Authentification failed"
+       #end
    end
 end

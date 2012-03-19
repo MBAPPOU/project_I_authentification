@@ -34,7 +34,7 @@ describe 'Authentification server' do
               u = User.new
               u.login = "ok1"
               u.password = "1ko"
-              u.save
+              u.save!
               post '/register' , params = {:login=>"ok1", :password=>"1ko",:message=>"createaccount"}              
               last_response.status.should == 404
               last_response.body.should  == "An account with these arguments already exists </br></br> <a href=/s_auth/user/register>Register</a> "
@@ -60,25 +60,25 @@ describe 'Authentification server' do
               u = User.new
               u.login = "ok1"
               u.password = "1ok"
-              u.save
+              u.save!
               post '/login' , params = {:login=>"ok1", :password => "1ok",:message=>"",:backup_url => ""}
               cookie = last_response["Set-Cookie"]
               get '/s_auth/user/login' , rack_env={"HTTP_COOKIE" => "#{cookie}"}
               last_request.cookies.should_not be nil
               last_response.should be_redirect
               follow_redirect!
-              last_response.body.should == "Welcome \"ok1\" </br></br> <a href=\"/s_auth/protected/list_Appli\">Applications list</a> </br> <a href=\"/s_auth/protected/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/application/register\">Register an application</a> </br>  <a href=\"/s_auth/protected/delete_Appli\">delete an application</a> </br> <a href=\"/s_auth/protected/disconnect\">Disconnect</a>"
+              last_response.body.should == "Welcome \"ok1\" </br></br> <a href=\"/s_auth/user/list_Appli\">Applications list</a> </br> <a href=\"/s_auth/user/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/application/register\">Register an application</a> </br>  <a href=\"/s_auth/user/delete_Appli\">delete an application</a> </br> <a href=\"/s_auth/user/disconnect\">Disconnect</a>"
            end
            
            it "should redirect you on home page if everything goes on" do
               u = User.new
               u.login = "ok1"
               u.password = "1ko"
-              u.save
+              u.save!
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>"",:backup_url => ""}              
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == "/s_auth/protected"
+              last_request.path.should == "/s_auth/user/protected"
            end
            
            it "should redirect you on login page if it doesn't know login,password or if login or password are empty" do
@@ -96,7 +96,7 @@ describe 'Authentification server' do
               u = User.new
               u.login = "ok1"
               u.password = "1ko"
-              u.save
+              u.save!
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
               post '/application', params = {:application_name => "lvmh"}
               last_response.status.should == 200
@@ -107,27 +107,27 @@ describe 'Authentification server' do
               u = User.new
               u.login = "ok"
               u.password = "ok"
-              u.save
+              u.save!
               a = Appli.new
               a.name = "APPLI1"
               a.secret = "1234"
               a.author = "ken"
-              a.save
+              a.save!
               post '/application', params = {:application_name => "APPLI1" ,:backup_url => ""}
               last_response.status.should == 404
-              last_response.body.should == "Saving failed : An application with this name has been already registered  </br></br> <a href=\"/s_auth/application/register\">Register an application</a>  <a href=\"/s_auth/protected\">Back</a>"
+              last_response.body.should == "Saving failed : An application with this name has been already registered  </br></br> <a href=\"/s_auth/application/register\">Register an application</a>  <a href=\"/s_auth/user/protected\">Back</a>"
            end
               
            it "should redirect you on register application page if Field application is empty" do
               u = User.new
               u.login = "ok"
               u.password = "ok"
-              u.save
+              u.save!
               a = Appli.new
               a.name = "APPLI1"
               a.secret = "1234"
               a.author = "ken"
-              a.save
+              a.save!
               post '/application', params = {:application_name => "", :backup_url => ""}
               last_response.should be_redirect
               follow_redirect!
@@ -139,26 +139,74 @@ describe 'Authentification server' do
         
         
         context "to delete an application" do
-           it "should redirect you on applications list" do
+           it "should redirect you on applications list if you re application author" do
               u = User.new
               u.login = "ok1"
               u.password = "1ko"
-              u.save
+              u.save!
               a = Appli.new
               a.name = "alpha"
               a.secret = 1234
               a.author = "ok1"
+              a.save!
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
-              post '/s_auth/protected/delete_Appli', params = {:application => "alpha"}
-              last_response.body.should == ""
-              #last_response.should be_redirect
+              post '/s_auth/user/delete_Appli', params = {:application => "alpha"}
+              last_response.should be_redirect
               follow_redirect!
-              last_response.path.should == '/list_Appli'
+              last_request.path.should == '/s_auth/user/list_Appli'
               last_response.body.should_not be nil
+           end
+           
+           it "should return an error message if you re not apoplication author or service administrator" do
+              u = User.new
+              u.login = "ok1"
+              u.password = "1ko"
+              u.save!
+              a = Appli.new
+              a.name = "alpha"
+              a.secret = 1234
+              a.author = "super_user"
+              a.save!
+              post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
+              post '/s_auth/user/delete_Appli', params = {:application => "alpha"}
+              last_response.status.should == 404
+              last_response.body.should == "You're not the author of application \"alpha\" and you don't have rights to delete it </br> <a href=\"/s_auth/user/protected\">Back</a>"
            end
         end
         
-        
+        context "to delete a user" do
+           it "should redirect you on users list if you re service administrator" do
+              u = User.new
+              u.login = "super_user"
+              u.password = "su"
+              u.save!
+              u1 = User.new
+              u1.login = "alpha"
+              u1.password = "alpha"
+              u1.save!
+              post '/login' , params = {:login=>"super_user", :password=>"su",:message=>""}
+              post '/s_auth/user/delete_User', params = {:user => "alpha"}
+              last_response.should be_redirect
+              follow_redirect!
+              last_request.path.should == "/s_auth/user/list_User"
+              last_response.body.should_not be nil
+           end
+           
+           it "should return an error message if you re not service administrator" do
+              u = User.new
+              u.login = "super_user"
+              u.password = "su"
+              u.save!
+              u1 = User.new
+              u1.login = "alpha"
+              u1.password = "alpha"
+              u1.save!
+              post '/login' , params = {:login=>"alpha", :password=>"alpha",:message=>""}
+              post '/s_auth/user/delete_Appli', params = {:application => "alpha"}
+              last_response.status.should == 404
+              last_response.body.should_not be nil
+           end
+        end
         
         
         context "to authenticate somebody on knowned application" do
@@ -167,7 +215,7 @@ describe 'Authentification server' do
               a.name = "APPLI1"
               a.secret = "1234"
               a.author = "ken"
-              a.save
+              a.save!
               get '/s_auth/application/authenticate?application=APPLI1;backup_url=/test' 
               last_response.body.should_not be nil
            end
@@ -184,11 +232,11 @@ describe 'Authentification server' do
               a.name = "APPLI1"
               a.secret = "1234"
               a.author = "ken"
-              a.save
+              a.save!
               u = User.new
               u.login = "ok"
               u.password = "ok"
-              u.save
+              u.save!
               post '/authenticate' , params = {:application=>"APPLI1",:login => "ok",:password=>"ok",:message => "" ,:backup_url => "/test"}
               last_response.should be_redirect
               follow_redirect!
