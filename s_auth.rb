@@ -64,19 +64,7 @@ get '/test' do
 end
 
 get '/' do
-   if current_user == "super_user"
-      if redirection != "%"
-           redirect "#{redirection}"
-       else
-           body "Welcome #{current_user} </br></br> <a href=\"/disconnect\">Disconnect</a> \n <a href=\"/administration\">Administrate</a>"
-       end
-   else
-       if redirection != "%"
-           redirect "#{redirection}" 
-       else
-           body "Welcome #{current_user} </br></br> <a href=\"/disconnect\">Disconnect</a>"
-       end
-   end
+   body "#{headers["Set-Cookie"].inspect}"
 end
 
 #-----------------------------------------------------------------------------------
@@ -96,9 +84,13 @@ end
 
 post '/register' do
    if (login && login != "" && password && password != "" && createaccount?)
-       if (User.find_by_login(login) && User.find_by_login(login).password == password)
-           status 404
-           body "An account with these arguments already exists </br></br> <a href=/s_auth/user/register>Register</a> "
+       if User.find_by_login(login) 
+           if User.find_by_login(login).password == password
+               status 404
+               body "An account with these arguments already exists </br></br> <a href=/s_auth/user/register>Register</a> "
+           else
+               redirect '/s_auth/user/register?message=failed'
+           end
        else # Nouvel utilisateur
            u = User.new
            u.login = login
