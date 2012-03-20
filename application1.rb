@@ -10,7 +10,7 @@ use Rack::Session::Cookie, :key => 'rack.session',
 helpers do
 
 def current_user
-   session["current_user"]
+   session["utilisateur"]
 end
 
 def user
@@ -18,7 +18,7 @@ def user
 end
 
 def disconnect
-   session["current_user"] = nil
+   session["utilisateur"] = nil
 end
 
 end
@@ -27,25 +27,25 @@ get '/welcome' do
    if current_user
        redirect '/appli1/protected'
    else
-       body "Bienvenue sur L'application Number 1 <a href=\"http://localhost:4567/s_auth/application/authenticate?application=java&&backup_url=http://localhost:4568/java/protected\">Log in</a>"
+       body "Bienvenue sur L'application Number 1 <a href=\"http://localhost:4567/s_auth/application/authenticate?application=Baby&&backup_url=http://localhost:4568/Baby/protected\">Log in</a>"
    end
 end
 
-get '/java/protected' do
+get '/Baby/protected' do
    if current_user
        body "Welcome #{params[:user]}"
    else
-       if params[:secret] = "1591732693"
-           session[current_user] = user
-           body "Welcome #{user} <a href=\"/java/disconnect\">Disconnect</a>"
+       if params[:secret] = "1869323054"
+           session["utilisateur"] = user
+           body "Welcome #{user} <a href=\"/Baby/disconnect\">Disconnect</a>"
        else
            status 404
-           body "Authentification failed <a href=\"http://localhost:4567/s_auth/application/authenticate?application=APPLI1&&backup_url=http://localhost:4568//appli1/protected\">Log in</a>"
+           body "Authentification failed <a href=\"http://localhost:4567/s_auth/application/authenticate?application=Baby1&&backup_url=http://localhost:4568//Baby/protected\">Log in</a>"
        end
    end
 end
 
-get '/java/disconnect' do
+get '/Baby/disconnect' do
     if current_user
         disconnect
         body "Good bye"
