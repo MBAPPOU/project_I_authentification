@@ -7,17 +7,13 @@ require 'authentification'
 
 
 use Rack::Session::Cookie, :key => 'rack.session',
-                           :domain => 's_auth.com',
                            :expire_after => 2592000,
+                           :path => '/',
                            :secret => 'super_user'
 helpers do
 
   def current_user
     session["current_user"]
-  end
-
-  def cookies
-     request.cookies["s_authcookie"]
   end
   
   def redirection
@@ -43,12 +39,7 @@ helpers do
   def generate_secret(bit_size=1234567)
     rand(2**bit_size - 1)
   end
-  
-  def generate_id(bit_size=32)
-    rand(2**bit_size - 1)
-  end
-  
-      
+    
   def disconnect
      session["current_user"] = nil
   end
@@ -114,20 +105,23 @@ get '/users/login' do
    if current_user
        redirect "/users/#{current_user}/profile"
    else
-       message = params[:message]
        status 200
-       erb:"users/new", :locals => {:commit => "Log in",:post => "/login",:accueil => "Log in #{message}", :message => "" , :backup_url => "#{redirection}"}
+       erb:"users/new", :locals => {:commit => "Log in",:post => "/login",:accueil => "Log in #{params[:message]}", :message => "" , :backup_url => "#{redirection}"}
    end
 end
 
 post '/login' do
-   if login != "" && password != "" && User.find_by_login(login) &&  (User.find_by_login(login).password == password) && (not createaccount?)
+   if login != "" && password != "" && 
+     if User.find_by_login(login) &&  (User.find_by_login(login).password == password) && (not createaccount?)
         session["current_user"] = login
         if redirection != "%"
            redirect redirection
         else
            redirect "/users/#{login}/profile"
         end
+     else
+        redirect "/users/login?message=failed"
+     end
    else
        redirect "/users/login?message=failed"
    end
@@ -144,7 +138,7 @@ if User.find_by_login(params[:name])
           if current_user == "super_user"
              @menu = "</br></br> <a href=\"/users/#{current_user}/usedApplis\">Used applications</a> </br> <a href=\"/users/#{current_user}/administration\">Administrate</a> </br> <a href=\"/users/#{current_user}/disconnect\">Disconnect</a>"
           else
-             @menu = "</br></br> <a href=\"/users/#{current_user}/list_Appli\">Applications list</a> </br> <a href=\"/users/#{current_user}/usedApplis\">Used applications</a> </br> <a href=\"/application/new\">Register an application</a> </br>  <a href=\"/users/#{current_user}/delete_Appli\">delete an application</a> </br> <a href=\"/users/#{current_user}/disconnect\">Disconnect</a>"
+             @menu = "</br></br> <a href=\"/users/#{current_user}/list_Appli\">Applications list</a> </br> <a href=\"/users/#{current_user}/usedApplis\">Used applications</a> </br> <a href=\"/applications/new\">Register an application</a> </br>  <a href=\"/users/#{current_user}/delete_Appli\">delete an application</a> </br> <a href=\"/users/#{current_user}/disconnect\">Disconnect</a>"
           end
           status 200
           erb:"users/profile", :locals => {:user => @user, :menu => @menu}
@@ -365,10 +359,7 @@ get '/:application/authenticate' do
                 body "You're have been already authenticate"
             end
         else
-            if redirection != "%"
-                redirection = ""
-            end
-            erb:"users/new", :locals => {:post => "/authenticate?application=#{params[:application]}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => "#{redirection}",:commit => "Log in"}
+            erb :"users/new",:locals => {:post => "/authenticate?application=#{params[:application]}" ,:accueil => "Log in #{message}" , :message => "" , :backup_url => "#{redirection}",:commit => "Log in"}
         end
    else
        status 404
