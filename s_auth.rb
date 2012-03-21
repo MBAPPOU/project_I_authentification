@@ -7,6 +7,7 @@ require 'authentification'
 
 
 use Rack::Session::Cookie, :key => 'rack.session',
+                           :domain => 's_auth.com',
                            :expire_after => 2592000,
                            :secret => 'super_user'
 helpers do
@@ -170,7 +171,7 @@ if User.find_by_login(params[:name])
               infos << r.name
           end
        end
-       body "#{infos.inspect} </br></br> <a href=\"/users/#{current_user}/profile\">Back</a>"
+       body "Used Applications : #{infos.inspect} </br></br> <a href=\"/users/#{current_user}/profile\">Back</a>"
    else
        redirect "/users/login" #?backup_url=/users/#{current_user}/usedApplis"
    end
@@ -377,6 +378,7 @@ end
 
 post '/authenticate' do
    application = params[:application]
+   backup = redirection
    if login && login != "" && password && password != "" && User.find_by_login(login) && User.find_by_login(login).password == password
         secret = Appli.find_by_name(application).secret
         session["current_user"] = login
@@ -384,18 +386,16 @@ post '/authenticate' do
         auth.user = User.find_by_login(current_user).id
         auth.application = Appli.find_by_name(application).id
         auth.save!
-        if redirection != "%"
-            redirect "#{redirection}?secret=#{secret};user=#{current_user}"
+        if backup != "%"
+            redirect "#{backup}?secret=#{secret};user=#{current_user}"
         else
             body "You're log in"
         end
    else
-       redirect "/#{application}/authenticate?backup_url=#{redirection}"
-       #if redirection != "%"
-           #redirect "#{redirection}"
-       #else
-           #status 404
-           #body "Authentification failed"
-       #end
+       if backup != "%"
+           redirect "/#{application}/authenticate?backup_url=#{backup}&message=failed"
+       else
+           redirect "/#{application}/authenticate?message=failed"
+       end
    end
 end
