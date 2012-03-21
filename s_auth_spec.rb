@@ -12,10 +12,10 @@ describe 'Authentification server' do
            Sinatra::Application
         end
         
-        before do
-              User.all.each{|p| p.destroy}
-              Appli.all.each{|p| p.destroy}
-        end
+        #before do
+              #User.all.each{|p| p.destroy}
+              #Appli.all.each{|p| p.destroy}
+        #end
 
         context "to register somebody" do
            it "should return a formular" do
@@ -129,6 +129,7 @@ describe 'Authentification server' do
               application.stub(:secret=)
               application.stub(:author=)
               application.stub(:save!)
+              application.stub(:secret).and_return(12345)
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
               last_response.should be_redirect
               follow_redirect!

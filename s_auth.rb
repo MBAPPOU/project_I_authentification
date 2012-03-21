@@ -146,10 +146,10 @@ if User.find_by_login(params[:name])
              @menu = "</br></br> <a href=\"/users/#{current_user}/list_Appli\">Applications list</a> </br> <a href=\"/users/#{current_user}/usedApplis\">Used applications</a> </br> <a href=\"/application/new\">Register an application</a> </br>  <a href=\"/users/#{current_user}/delete_Appli\">delete an application</a> </br> <a href=\"/users/#{current_user}/disconnect\">Disconnect</a>"
           end
           status 200
-          erb:"users/profile"
+          erb:"users/profile", :locals => {:user => @user, :menu => @menu}
        end
    else
-       redirect '/users/login?backup_url=/users/protected'
+       redirect '/users/login' #?backup_url=/users/protected'
    end
 else
    403
@@ -172,7 +172,7 @@ if User.find_by_login(params[:name])
        end
        body "#{infos.inspect} </br></br> <a href=\"/users/#{current_user}/profile\">Back</a>"
    else
-       redirect "/users/login?backup_url=/users/#{current_user}/usedApplis"
+       redirect "/users/login" #?backup_url=/users/#{current_user}/usedApplis"
    end
 else
    403
@@ -186,11 +186,11 @@ get '/users/:name/administration' do
 if User.find_by_login(params[:name])
    if current_user == "super_user"
        @user = current_user
-       @menu = "<a href=\"/users/#{current_user}/list_Appli\">Applications list</a> \n <a href=\"/users/#{current_user}/list_User\">Users list</a> <a href=\"/users/#{current_user}/delete_Appli\">delete application</a> <a href=\"/application/new\">add application</a> <a href=\"/users/#{current_user}/delete_User\">delete user</a> <a href=\"/users/#{current_user}/register\">add user</a> <a href=\"/users/#{current_user}/profile\">Back</a>"
+       @menu = "</br></br> <a href=\"/users/#{current_user}/list_Appli\">Applications list</a> </br> <a href=\"/users/#{current_user}/list_User\">Users list</a> </br> <a href=\"/users/#{current_user}/delete_Appli\">delete application</a> </br> <a href=\"/applications/new\">add application</a> </br> <a href=\"/users/#{current_user}/delete_User\">delete user</a> </br> <a href=\"/users/#{current_user}/register\">add user</a> </br> <a href=\"/users/#{current_user}/profile\">Back</a>"
+       erb:"users/profile",:locals => {:user => @user, :menu => @menu}
    else
-       redirect "/users/login?backup_url=/users/#{current_user}/administration"
+       redirect "/users/login" #?backup_url=/users/#{current_user}/profile"
    end
-   erb:"users/profile"
 else
    403
 end
@@ -203,7 +203,7 @@ if User.find_by_login(params[:name])
        status 200
        body eval "erb:\"applications/destroy\""
    else
-       redirect "/user/login?backup_url=/users/#{current_user}/delete_Appli"
+       redirect "/user/login" # backup_url=/users/#{current_user}/delete_Appli"
    end
 else
    403
@@ -233,12 +233,16 @@ end
 # Supprimmer un utilisateur
 get '/users/:name/delete_User' do
 if User.find_by_login(params[:name])
-   if current_user == "super_user"
-       status 200
-       erb:"users/destroy"
+   if current_user
+      if current_user == "super_user"
+          status 200
+          erb:"users/destroy"
+      else
+         status 404
+         body "You don't have permissions to reach this page  </br></br>    <a href=\"/users/#{current_user}/profile\">Back</a> "
+      end
    else
-       status 404
-       body "You don't have permissions to reach this page  </br></br>    <a href=\"/users/#{current_user}/profile\">Back</a> "
+      redirect "/users/login"
    end
 else
    403
@@ -269,7 +273,7 @@ if User.find_by_login(params[:name])
        Appli.all.each{|p| applis << p.name}
        body "Applications List : #{applis.inspect}    </br></br>    <a href=\"/users/#{current_user}/profile\">Back</a>"
    else
-       redirect '/users/login?backup_url=/users/#{current_user}/list_Appli'
+       redirect '/users/login' #?backup_url=/users/#{current_user}/list_Appli'
    end
 else
    403
@@ -284,7 +288,7 @@ if User.find_by_login(params[:name])
        User.all.each{|u| user << u.login}
        body "Users List : #{user.inspect}    </br></br>        <a href=\"/users/#{current_user}/administration\">Back</a>"
    else
-       redirect "/users/login?backup_url=/users/#{current_user}/list_User"
+       redirect "/users/login" #?backup_url=/users/#{current_user}/list_User"
    end
 else
    403
@@ -316,7 +320,7 @@ get '/applications/new' do
    if current_user
        message = params[:message]
        status 200
-       erb:"applications/new1", :locals => {:post => "/applications",:accueil => "Register an application #{message}" , :backup_url => ""}
+       erb:"applications/new", :locals => {:post => "/applications",:accueil => "Register an application #{message}" , :backup_url => ""}
    else
        redirect '/users/login?backup_url=/applications/new'
    end

@@ -1,11 +1,8 @@
 $:.unshift File.dirname(__FILE__)
 require 'sinatra'
 
-set :port, 4568
-
-use Rack::Session::Cookie, :key => 'rack.session',
-                           :expire_after => 259000,
-                           :secret => 'appli1'
+set :port, 4568                          
+enable :sessions
 
 helpers do
 
@@ -27,25 +24,25 @@ get '/welcome' do
    if current_user
        redirect '/appli1/protected'
    else
-       body "Bienvenue sur L'application Number 1 <a href=\"http://localhost:4567/s_auth/application/authenticate?application=Baby&&backup_url=http://localhost:4568/Baby/protected\">Log in</a>"
+       body "Bienvenue sur L'application Number 1 <a href=\"http://localhost:4567/appli1/authenticate?backup_url=http://localhost:4568/appli1/protected\">Log in</a>"
    end
 end
 
-get '/Baby/protected' do
+get '/appli1/protected' do
    if current_user
-       body "Welcome #{params[:user]}"
+       body "Welcome #{params[:user]}  <a href=\"/appli1/disconnect\">Disconnect</a>"
    else
-       if params[:secret] = "1869323054"
+       if params[:secret] = 1234
            session["utilisateur"] = user
-           body "Welcome #{user} <a href=\"/Baby/disconnect\">Disconnect</a>"
+           body "Welcome #{user}  <a href=\"/appli1/disconnect\">Disconnect</a>"
        else
            status 404
-           body "Authentification failed <a href=\"http://localhost:4567/s_auth/application/authenticate?application=Baby1&&backup_url=http://localhost:4568//Baby/protected\">Log in</a>"
+           body "Authentification failed <a href=\"http://localhost:4567/appli1/authenticate?backup_url=http://localhost:4568/appli1/protected\">Log in</a>"
        end
    end
 end
 
-get '/Baby/disconnect' do
+get '/appli1/disconnect' do
     if current_user
         disconnect
         body "Good bye"
