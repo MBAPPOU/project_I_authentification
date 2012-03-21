@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Destruction page</title>
+</head>
+<body>
+
+<h1>Delete User</h1>
+
+<form action="/delete_User" method="post">
+  <div class="field">
+    <label for="user">User</label><br />
+    <input id="user" name="user" size="50" type="text" />
+  </div>
+  
+  <div class="actions">
+    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="" />
+    <input name="commit" type="submit" value="Delete" />
+    
+    
+  </div>
+  
+  
+  <a href="/users/protected">Back</a>
+</form>
+
+</body>
+</html>
+

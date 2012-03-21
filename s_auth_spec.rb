@@ -12,14 +12,14 @@ describe 'Authentification server' do
            Sinatra::Application
         end
         
-        before(:each) do
+        before do
               User.all.each{|p| p.destroy}
               Appli.all.each{|p| p.destroy}
         end
 
         context "to register somebody" do
            it "should return a formular" do
-              get '/s_auth/user/register'
+              get '/users/new'
               last_response.status.should == 200
               last_response.body.should_not be nil
            end
@@ -32,32 +32,32 @@ describe 'Authentification server' do
               user.stub(:password=)
               user.stub(:save!)
 	      
-              post '/register' , params = {:login=>"ok1", :password=>"1ko",:message=>"createaccount"}          
+              post '/users' , params = {:login=>"ok1", :password=>"1ko",:message=>"createaccount"}          
               last_response.status.should == 200
-              last_response.body.should == "Registering succeed </br></br> <a href=/s_auth/user/login>Log in</a>"
+              last_response.body.should == "Registering succeed </br></br> <a href=/users/login>Log in</a>"
            end
            
            it "should return a message if an account with the same arguments exists in database" do
               user = double(User)
               User.stub(:find_by_login).and_return(user)
               user.stub(:password).and_return("1ko")
-              post '/register' , params = {:login=>"ok1", :password=>"1ko",:message=>"createaccount"}              
+              post '/users' , params = {:login=>"ok1", :password=>"1ko",:message=>"createaccount"}              
               last_response.status.should == 404
-              last_response.body.should  == "An account with these arguments already exists </br></br> <a href=/s_auth/user/register>Register</a> "
+              last_response.body.should  == "An account with these arguments already exists </br></br> <a href=/users/new>Register</a> "
            end
            
            it "should redirect you on register page when no password or no login set" do
-              post '/register' , params = {:login=>"ok1",:password => "",:message=>"createaccount"}              
+              post '/users' , params = {:login=>"ok1",:password => "",:message=>"createaccount"}              
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == '/s_auth/user/register'
+              last_request.path.should == '/users/new'
               last_request.query_string.should == "message=failed"
            end
         end
         
         context "to log somebody" do
            it "should return a formular" do
-              get '/s_auth/user/login'
+              get '/users/login'
               last_response.status.should == 200
               last_response.body.should_not be nil
            end
@@ -72,11 +72,14 @@ describe 'Authentification server' do
               post '/login' , params = {:login=>"ok1", :password => "1ok",:message=>"",:backup_url => ""}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == "/s_auth/user/protected"
-              get '/s_auth/user/login', rack_env = { "rack.session" => last_request.env["rack.session"] }
+              last_request.path.should == "/users/ok1/profile"
+              cookie = last_request.env["rack.session"]
+              print cookie
+              get '/users/login', rack_env = { "rack.session" => {"current_user"  => "ok1"} }
               last_response.should be_redirect
               follow_redirect!
-              last_response.body.should == "Welcome \"ok1\" </br></br> <a href=\"/s_auth/user/list_Appli\">Applications list</a> </br> <a href=\"/s_auth/user/usedApplis\">Used applications</a> </br> <a href=\"/s_auth/application/register\">Register an application</a> </br>  <a href=\"/s_auth/user/delete_Appli\">delete an application</a> </br> <a href=\"/s_auth/user/disconnect\">Disconnect</a>"
+              last_request.path.should == "/users/ok1/profile"
+              last_response.body.should_not be nil
            end
            
            it "should redirect you on home page if everything goes on" do
@@ -86,7 +89,7 @@ describe 'Authentification server' do
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>"",:backup_url => ""}              
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == "/s_auth/user/protected"
+              last_request.path.should == "/users/ok1/profile"
            end
            
            it "should redirect you on login page if it doesn't know login,password or if login or password are empty" do
@@ -94,19 +97,33 @@ describe 'Authentification server' do
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == '/s_auth/user/login'
+              last_request.path.should == '/users/login'
               last_request.query_string.should == "message=failed"
            end
            
         end
         
         context "to register an application" do
+           it "should return a formular bu targetting /applications/new" do
+              user = double(User)
+              User.stub(:find_by_login).and_return(user)
+              user.stub(:password).and_return("1ko")
+              post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
+              last_response.should be_redirect
+              follow_redirect!
+              last_request.path.should == "/users/ok1/profile"
+              cookie = last_request.env["rack.session"]
+              get '/applications/new', rack_env = { "rack.session" => cookie }
+              last_response.status.should == 200
+              last_response.body.should_not be nil
+           end
+           
            it "should return a secret if everything goes on" do
               user = double(User)
               User.stub(:find_by_login).and_return(user)
               user.stub(:password).and_return("1ko")
-              application = double(Appli)
               Appli.stub(:find_by_name).and_return(false)
+              application = double(Appli)
               Appli.stub(:new).and_return(application)
               application.stub(:name=)
               application.stub(:secret=)
@@ -115,26 +132,34 @@ describe 'Authentification server' do
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == "/s_auth/user/protected"
-              
-              post '/application', params = {:application_name => "lvmh"} , rack_env = { "rack.session" => last_request.env["rack.session"] }
+              last_request.path.should == "/users/ok1/profile"
+              cookie = last_request.env["rack.session"]
+              post '/applications', params = {:application_name => "lvmh"} , rack_env = { "rack.session" => cookie }
               last_response.status.should == 200
               last_response.body.should_not be nil
            end
                       
            it "should return an error message if there is another application with this name in database" do
+              user = double(User)
+              User.stub(:find_by_login).and_return(user)
+              user.stub(:password).and_return("1ko")
               application = double(Appli)
               Appli.stub(:find_by_name).and_return(application)
-              post '/application', params = {:application_name => "APPLI1" ,:backup_url => ""}
+              post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
+              last_response.should be_redirect
+              follow_redirect!
+              last_request.path.should == "/users/ok1/profile"
+              cookie = last_request.env["rack.session"]
+              post '/applications', params = {:application_name => "APPLI1"} , rack_env = { "rack.session" => cookie }
               last_response.status.should == 404
-              last_response.body.should == "Saving failed : An application with this name has been already registered  </br></br> <a href=\"/s_auth/application/register\">Register an application</a>  <a href=\"/s_auth/user/protected\">Back</a>"
+              last_response.body.should ==  "Saving failed : An application with this name has been already registered  </br></br> <a href=\"/applications/new\">Register an application</a>  <a href=\"/users/ok1/profile\">Back</a>"
            end
               
            it "should redirect you on register application page if Field application is empty" do
-              post '/application', params = {:application_name => "", :backup_url => ""}
+              post '/applications', params = {:application_name => "", :backup_url => ""}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == '/s_auth/application/register'
+              last_request.path.should == '/applications/new'
               last_request.query_string.should == "message=application_empty"
               last_response.body.should_not be nil
            end
@@ -151,10 +176,12 @@ describe 'Authentification server' do
               a.stub(:destroy)
               a.stub(:author).and_return("ok1")
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
-              post '/s_auth/user/delete_Appli', params = {:application => "alpha"}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == '/s_auth/user/list_Appli'
+              post '/delete_Appli', params = {:application => "alpha"}
+              last_response.should be_redirect
+              follow_redirect!
+              last_request.path.should == '/users/ok1/list_Appli'
               last_response.body.should_not be nil
            end
            
@@ -167,9 +194,11 @@ describe 'Authentification server' do
               a.stub(:author).and_return("super_user")
               a.stub(:destroy)
               post '/login' , params = {:login=>"ok1", :password=>"1ko",:message=>""}
-              post '/s_auth/user/delete_Appli', params = {:application => "alpha"}
+              last_response.should be_redirect
+              follow_redirect!
+              post '/delete_Appli', params = {:application => "alpha"}
               last_response.status.should == 404
-              last_response.body.should == "You're not the author of application \"alpha\" and you don't have rights to delete it </br> <a href=\"/s_auth/user/protected\">Back</a>"
+              last_response.body.should == "You're not the author of application \"alpha\" and you don't have rights to delete it </br> <a href=\"/users/ok1/profile\">Back</a>"
            end
         end
         
@@ -180,10 +209,13 @@ describe 'Authentification server' do
               u.stub(:password).and_return("su")
               u.stub(:destroy)
               post '/login' , params = {:login=>"super_user", :password=>"su",:message=>""}
-              post '/s_auth/user/delete_User', params = {:user => "alpha"}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == "/s_auth/user/list_User"
+              cookie = last_request.env["rack.session"]
+              post '/delete_User', params = {:user => "alpha"}, rack_env = {"rack.session" => cookie}
+              last_response.should be_redirect
+              follow_redirect!
+              last_request.path.should == "/users/super_user/list_User"
               last_response.body.should_not be nil
            end
            
@@ -192,9 +224,11 @@ describe 'Authentification server' do
               User.stub(:find_by_login).and_return(u)
               u.stub(:password).and_return("alpha")
               post '/login' , params = {:login=>"alpha", :password=>"alpha",:message=>""}
-              get '/s_auth/user/delete_User'
-              last_response.status.should == 302
-              last_response.headers["Location"].should == "http://example.org/s_auth/user/login?backup_url=/s_auth/delete_User"
+              last_response.should be_redirect
+              follow_redirect!
+              get '/users/alpha/delete_User'
+              last_response.status.should == 404
+              last_response.body.should == "You don't have permissions to reach this page  </br></br>    <a href=\"/users/alpha/profile\">Back</a> "
            end
         end
         
@@ -213,13 +247,13 @@ describe 'Authentification server' do
               auth.stub(:save!)
               a.stub(:id).and_return(2)
               a.stub(:secret).and_return(12345)
-              get '/s_auth/application/authenticate?application=APPLI1;backup_url=/test' 
+              get '/APPLI1/authenticate?backup_url=/test' 
               last_response.body.should_not be nil
            end
            
            it "should return an error message if it doesn't know application which is tried to authenticate you" do
               Appli.stub(:find_by_name).and_return(nil)
-              get '/s_auth/application/authenticate' ,params = {:application=> "APPLI1" , :backup_url => "/test"}
+              get '/APPLI1/authenticate' ,params = {:backup_url => "/test"}
               last_response.should_not be_ok
               last_response.status.should == 404
               last_response.body.should == "Unknown application APPLI1"
