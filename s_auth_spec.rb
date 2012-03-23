@@ -177,7 +177,7 @@ describe 'Authentification server' do
         
         
         context "to delete an application" do
-           it "should redirect you on applications list if you re application author" do
+           it "should redirect you on home page if you re application author" do
               User.stub(:find_by_login).and_return(@user)
               @user.stub(:id).and_return(371)
               @user.stub(:password).and_return("1ko")
@@ -189,7 +189,7 @@ describe 'Authentification server' do
               post '/Applidelete', params = {:application => "alpha"}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == '/applications/list'
+              last_request.path.should == "/users/371"
               last_response.body.should_not be nil
            end
            
@@ -209,7 +209,7 @@ describe 'Authentification server' do
         end
         
         context "to delete a user" do
-           it "should redirect you on users list if you re service administrator" do
+           it "should redirect you on home page if you re service administrator" do
               User.stub(:find_by_login).and_return(@user)
               @user.stub(:id).and_return(371)
               @user.stub(:password).and_return("su")
@@ -220,7 +220,7 @@ describe 'Authentification server' do
               post '/Userdelete', params = {:user => "alpha"}, rack_env = {"rack.session" => cookie}
               last_response.should be_redirect
               follow_redirect!
-              last_request.path.should == "/users/list"
+              last_request.path.should == "/users/371"
               last_response.body.should_not be nil
            end
            

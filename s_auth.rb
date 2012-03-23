@@ -135,13 +135,31 @@ get '/users/:id' do
     if u
        if current_user
           @user = current_user
-          if @user == "super_user"
-             @menu = "</br></br> <a href=\"/users/usedApplis/#{u.id}\">Used applications</a> </br> <a href=\"/users/administration/#{u.id}\">Administrate</a> </br> <a href=\"/sessions/disconnect\">Disconnect</a>"
+           if @user == "super_user"
+             @menu = "<a href=\"/applications/new\">Register an application</a> <a href=\"/applications/delete\">delete an application</a> <a href=\"/users/new\">create user</a> <a href=\"/users/delete\">delete a user</a> <a href=\"/sessions/disconnect\">Disconnect</a>"
+             users = []
+             User.all.each{|usr| users << usr.login}
+             @users = "Users List : </br>" + users.inspect
           else
-             @menu = "</br></br> <a href=\"/applications/list\">Applications list</a> </br> <a href=\"/users/usedApplis/#{u.id}\">Used applications</a> </br> <a href=\"/applications/new\">Register an application</a> </br>  <a href=\"/applications/delete\">delete an application</a> </br> <a href=\"/sessions/disconnect\">Disconnect</a>"
+             @menu = "<a href=\"/applications/new\">Register an application</a> <a href=\"/applications/delete\">delete an application</a> </br> <a href=\"/sessions/disconnect\">Disconnect</a>"
+             @users = ""
           end
+             tmp = User.find_by_login(@user)
+             used = Authentification.find_all_by_user(tmp.id)
+             reponse = []
+             infos = []
+             used.each do |u|
+                reponse = Appli.find_all_by_id(u.application)
+                reponse.each do |r|
+                infos << r.name
+                end
+             end
+          @usedapplications = infos.inspect
+          applis = []
+          Appli.all.each{|p| applis << p.name}
+          @applications = applis.inspect
           status 200
-          erb:"users/profile", :locals => {:user => @user, :menu => @menu}
+          erb:"users/profile", :locals => {:user => @user, :menu => @menu ,:users=>@users,:usedapplications=>@usedapplications,:applications=>@applications}
       else
          redirect '/sessions/new'
       end
@@ -151,46 +169,6 @@ get '/users/:id' do
    end
 end
 
-# Applis ayant authentifié un utilisateur
-get '/users/usedApplis/:id' do
-   u = User.find_by_id(params[:id])
-   if u
-      if current_user
-          tmp = User.find_by_login(current_user)
-          used = Authentification.find_all_by_user(tmp.id)
-          reponse = []
-          infos = []
-          used.each do |u|
-             reponse = Appli.find_all_by_id(u.application)
-             reponse.each do |r|
-             infos << r.name
-             end
-          end
-          body "Used Applications : #{infos.inspect} </br></br> <a href=\"/users/#{u.id}\">Back</a>"
-      else
-         backup = "/users/usedApplis/#{u.id}"
-         redirect "/sessions/new?backup_url=#{backup}"
-      end
-   else
-       status 403
-       "forbidden"
-   end
-end
-
-#--------------------------------------------------------
-# Partie d'administration du service d'authentification
-#--------------------------------------------------------
-get '/users/administration/:id' do
-        if current_user == "super_user"
-             u = User.find_by_login(current_user)
-             @user = current_user
-             @menu = "</br></br> <a href=\"/applications/list\">Applications list</a> </br> <a href=\"/users/list\">Users list</a> </br> <a href=\"/applications/delete\">delete application</a> </br> <a href=\"/applications/new\">add application</a> </br> <a href=\"/users/delete\">delete user</a> </br> <a href=\"/users/new\">add user</a> </br> <a href=\"/users/#{u.id}\">Back</a>"
-            erb:"users/profile",:locals => {:user => @user, :menu => @menu}
-        else
-           status 403
-           "forbidden"
-        end
-end
 
 # Supprimer une application
 get '/applications/delete' do
@@ -210,7 +188,7 @@ post '/Applidelete' do
         if a
             if a.author == current_user || current_user == "super_user"
                 a.destroy
-                redirect "/applications/list"
+                redirect "/users/#{u.id}"
             else
                 status 404
                 body "You're not the author of application \"#{params[:application]}\" and you don't have rights to delete it </br> <a href=\"/users/#{u.id}\">Back</a>"
@@ -226,68 +204,30 @@ end
 
 # Supprimmer un utilisateur
 get '/users/delete' do
-      if current_user && current_user == "super_user"
-         u = User.find_by_login(current_user)
-         status 200
-         erb:"users/destroy", :locals => {:message => message,:back => u.id}
-      else
-          if not current_user
-              redirect "/sessions/new"
-          else
-              if current_user != "super_user"
-              status 403
-              body "forbidden"
-              end
-          end
-         #body "You don't have permissions to reach this page  </br></br>    <a href=\"/users/#{u.id}\">Back</a> "
-      end
+   if current_user
+       erb:"users/destroy", :locals => {:message => message,:back => User.find_by_login(current_user)}
+   else
+      redirect "/sessions/new"
+   end
 end
+
 
 post '/Userdelete' do
    if params[:user]
        u = User.find_by_login(params[:user])
        if u 
            u.destroy
-           redirect "/users/list"
+           redirect "/users/#{u.id}"
        else
           status 404
           body "This account doesn't exist in database"
        end
    else
       status 404
-      body "Field user is empty or doesn't exist"
+      body "Field user is empty or doesn't exist <a href=\"/users/delete\">Back</a>"
    end
 end
 
-# Lister les applications enregistrées
-get '/applications/list' do
-   if current_user
-       u = User.find_by_login(current_user)
-       applis = []
-       Appli.all.each{|p| applis << p.name}
-       body "Applications List : #{applis.inspect}    </br></br>    <a href=\"/users/#{u.id}\">Back</a>"
-   else
-       redirect '/sessions/new'
-   end
-end
-
-# Lister les comptes utilisateurs enregistrés
-get '/users/list' do
-      if current_user && current_user == "super_user"
-         u = User.find_by_login(current_user)
-         users = []
-         User.all.each{|usr| users << usr.login}
-         body "Users List : #{users.inspect}    </br></br>        <a href=\"/users/#{u.id}\">Back</a>"
-      else
-          if not current_user
-              #redirect '/sessions/new'
-          else
-             status 403
-             body "forbidden"
-          end
-         #body "You don't have rights to reach this page    </br></br>   <a href=\"/users/#{u.id}\">Back</a>"
-     end
-end
 
 # Se déconnecter
 get '/sessions/disconnect' do
@@ -301,7 +241,6 @@ get '/sessions/disconnect' do
        body "You were not connect!"
    end
 end
-
 
 #-----------------------------------------------------------------------------------
 # Enregistrement d'application
@@ -354,7 +293,7 @@ get '/:application/authenticate' do
                 body "You're have been already authenticate"
             end
         else
-            erb :"authenticate/new",:locals => {:post => "/authenticate?application=#{params[:application]}" , :message => message , :backup_url => "#{redirection}"}
+            erb :"authenticate/new",:locals => {:post => "/authenticate?application=#{params[:application]}" , :message => message , :backup_url => redirection}
         end
    else
        status 404

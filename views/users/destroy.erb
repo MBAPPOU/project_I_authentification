@@ -7,7 +7,7 @@
 
 <h1>Delete User <%= message %></h1>
 
-<form action="/delete_User" method="post">
+<form action="/Userdelete" method="post">
   <div class="field">
     <label for="user">User</label><br />
     <input id="user" name="user" size="50" type="text" />
@@ -21,7 +21,7 @@
   </div>
   
   
-  <a href="<%= back %>">Back</a>
+  <a href="/users/<%= back %>">Back</a>
 </form>
 
 </body>
