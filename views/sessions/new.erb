@@ -5,9 +5,9 @@
 </head>
 <body>
 
-<h1> <%= accueil %> </h1>
+<h1> Log in <%= message %> </h1>
 
-<form action="<%= post %>" method="post">
+<form action="/sessions" method="post">
   <div class="field">
   
     <label for="session_login">Login</label><br />
@@ -20,8 +20,7 @@
   </div>
   <div class="actions">
     <input id="url_redirection" name="backup_url" size="100" type="hidden" value="<%= backup_url %>" />
-    <input id="message" name="message" size="100" type="hidden" value="<%= message %>" />
-    <input name="commit" type="submit" value="<%= commit %>" />
+    <input name="commit" type="submit" value="Log in" />
   </div>
   
   </form>

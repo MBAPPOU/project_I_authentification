@@ -5,7 +5,7 @@
 </head>
 <body>
 
-<h1>Delete User</h1>
+<h1>Delete User <%= message %></h1>
 
 <form action="/delete_User" method="post">
   <div class="field">
@@ -21,7 +21,7 @@
   </div>
   
   
-  <a href="/users/protected">Back</a>
+  <a href="<%= back %>">Back</a>
 </form>
 
 </body>

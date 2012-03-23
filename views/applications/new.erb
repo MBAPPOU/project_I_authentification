@@ -5,9 +5,9 @@
 </head>
 <body>
 
-<h1> <%= accueil %> </h1>
+<h1> Record application <%= message %> </h1>
 
-<form action="<%= post %>" method="post">
+<form action="/applications" method="post">
   
   <div class="field">
     <label for="application_name">Application name</label><br />
@@ -15,13 +15,13 @@
   </div>
   
   <div class="actions">
-    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="<%= backup_url %>" />
+    <input id="url_redirection" name="backup_url" size="100" type="hidden" value="" />
     <input name="commit" type="submit" value="Record application" />
     
   </div>
   
   
-  <a href="/s_auth/protected">Back</a>
+  <a href="<%= back %>">Back</a>
   
   
 </form>

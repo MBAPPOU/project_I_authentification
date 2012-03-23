@@ -5,9 +5,9 @@
 </head>
 <body>
 
-<h1>Delete Application</h1>
+<h1>Delete Application <%= message %></h1>
 
-<form action="/delete_Appli" method="post">
+<form action="/Applidelete" method="post">
   <div class="field">
     <label for="application">Application</label><br />
     <input id="application" name="application" size="50" type="text" />
@@ -20,7 +20,7 @@
   </div>
   
   
-  <a href="/users/protected">Back</a>
+  <a href="/users/<%= back %>">Back</a>
 </form>
 
 </body>

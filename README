@@ -1,0 +1,55 @@
+Le projet est constitué de 3 parties :
+
+- Le service d'authentification
+- 2 applications clientes 1 et 2
+
+-------------
+APPLICATIONS
+-------------
+Le service d'authentification repond sur le port 4567
+Les applications clientes répondent respectivement sur les ports 4568 et 4569
+
+Le service d'authentification est accessible depuis : s_auth.rb
+L'application 1 est accessible depuis : application1.rb
+L'application 2 est accessible depuis : application2.rb
+
+Pour les lancer, utiliser la commande: ruby
+
+------
+TESTS
+------
+Les Tests du service d'authentification sont accessibles depuis le fichier s_auth_spec.rb
+
+Pour le lancer, utiliser la commande : rspec
+
+
+---------------- 
+ BASE DE DONNEE
+----------------
+ Le fichier d'accès à la base de donnée est : database.rb
+ La base de donnée est disponible sous: Db/BDD.sqlite3
+ Le fichier de configuration de la base de donnée est : Dbconf/database.yml
+ Le fichier d'application des migrations est : migration.rb
+ 
+ 3 utillisateurs sont présents dans la base de donnée dont les logins et passwords sont respectivement:
+ 
+ - super_user|su
+ - lefou|lefou
+ - ok|ok
+ 
+ 2 applications sont présentes dans la base de données :
+ 
+ - appli1
+ - appli2
+ 
+ -------
+ MODELS
+ -------
+ Les modèles utilisés dans la base de donnée sont : user.rb, appli.rb , authentification.rb
+ 
+ -------
+ VIEWS
+ -------
+ Les vues sont accesibles dans le dossier: views
+ 
+

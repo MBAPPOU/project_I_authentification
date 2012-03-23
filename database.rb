@@ -1,6 +1,8 @@
 require 'active_record'
-require_relative 'user'
-require_relative 'appli'
+require_relative 'lib/user'
+require_relative 'lib/appli'
+require_relative 'lib/authentification'
+
 
 config_file = File.join(File.dirname(__FILE__),"Dbconf","database.yml")
 
