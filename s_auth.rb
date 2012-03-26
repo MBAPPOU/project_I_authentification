@@ -131,19 +131,27 @@ end
 
 # Partie protégée de l'application
 get '/users/:id' do
-    u = User.find_by_id(params[:id])
-    if u
-       if current_user
-          @user = current_user
-           if @user == "super_user"
-             @menu = "<a href=\"/applications/new\">Register an application</a> <a href=\"/applications/delete\">delete an application</a> <a href=\"/users/new\">create user</a> <a href=\"/users/delete\">delete a user</a> <a href=\"/sessions/disconnect\">Disconnect</a>"
-             users = []
-             User.all.each{|usr| users << usr.login}
-             @users = "Users List : </br>" + users.inspect
-          else
-             @menu = "<a href=\"/applications/new\">Register an application</a> <a href=\"/applications/delete\">delete an application</a> </br> <a href=\"/sessions/disconnect\">Disconnect</a>"
-             @users = ""
-          end
+    if params[:id] == "delete"
+        if current_user == "super_user"
+            erb:"users/destroy", :locals => {:message => message,:back => User.find_by_login(current_user)}
+        else
+           status 403
+           "forbidden"
+        end
+    else
+       u = User.find_by_id(params[:id])
+       if u
+          if current_user
+             @user = current_user
+             if @user == "super_user"
+                 @menu = "<a href=\"/applications/new\">Register an application</a> <a href=\"/applications/delete\">delete an application</a> <a href=\"/users/new\">create user</a> <a href=\"/users/delete\">delete a user</a> <a href=\"/sessions/disconnect\">Disconnect</a>"
+                 users = []
+                 User.all.each{|usr| users << usr.login}
+                 @users = "Users List : </br>" + users.inspect
+             else
+                 @menu = "<a href=\"/applications/new\">Register an application</a> <a href=\"/applications/delete\">delete an application</a> </br> <a href=\"/sessions/disconnect\">Disconnect</a>"
+                 @users = ""
+             end
              tmp = User.find_by_login(@user)
              used = Authentification.find_all_by_user(tmp.id)
              reponse = []
@@ -154,19 +162,20 @@ get '/users/:id' do
                 infos << r.name
                 end
              end
-          @usedapplications = infos.inspect
-          applis = []
-          Appli.all.each{|p| applis << p.name}
-          @applications = applis.inspect
-          status 200
-          erb:"users/profile", :locals => {:user => @user, :menu => @menu ,:users=>@users,:usedapplications=>@usedapplications,:applications=>@applications}
-      else
-         redirect '/sessions/new'
-      end
-   else
-       status 403
-       "forbidden"
-   end
+             @usedapplications = infos.inspect
+             applis = []
+             Appli.all.each{|p| applis << p.name}
+             @applications = applis.inspect
+             status 200
+             erb:"users/profile", :locals => {:user => @user, :menu => @menu ,:users=>@users,:usedapplications=>@usedapplications,:applications=>@applications}
+          else
+             redirect '/sessions/new'
+          end
+       else
+           status 403
+           "forbidden"
+       end
+    end
 end
 
 
@@ -202,22 +211,15 @@ post '/Applidelete' do
    end
 end
 
-# Supprimmer un utilisateur
-get '/users/delete' do
-   if current_user
-       erb:"users/destroy", :locals => {:message => message,:back => User.find_by_login(current_user)}
-   else
-      redirect "/sessions/new"
-   end
-end
 
 
 post '/Userdelete' do
    if params[:user]
        u = User.find_by_login(params[:user])
+       u1 = User.find_by_login(current_user)
        if u 
            u.destroy
-           redirect "/users/#{u.id}"
+           redirect "/users/#{u1.id}"
        else
           status 404
           body "This account doesn't exist in database"
