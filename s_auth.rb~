@@ -315,7 +315,7 @@ post '/authenticate' do
                 auth.application = Appli.find_by_name(application).id
                 auth.save!
                 if backup != "%"
-                    redirect "#{backup}?secret=#{secret}&user=#{current_user}"
+                    redirect "#{backup}?secret=#{secret};user=#{current_user}"
                 else
                     body "You're log in"
                 end
